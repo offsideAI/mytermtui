@@ -63,12 +63,17 @@ static int mt_materializeDefault(void) {
 	return setiopolicy_np(IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES,
 	                      IOPOL_SCOPE_THREAD, IOPOL_MATERIALIZE_DATALESS_FILES_DEFAULT);
 }
+
 */
 import "C"
 
 import (
+	"context"
 	"errors"
+	"os/exec"
 	"runtime"
+	"sync"
+	"time"
 	"unsafe"
 )
 
@@ -108,6 +113,57 @@ func (darwinBridge) Trash(path string) (string, error) {
 		C.free(unsafe.Pointer(out))
 	}
 	return putback, err
+}
+
+// DownloadProgress reports the percentage brctl currently shows for a
+// materializing file. Refreshes are throttled and asynchronous so the
+// UI tick never blocks on the subprocess.
+func (darwinBridge) DownloadProgress(path string, size int64) (float64, bool) {
+	return sharedPoller.get(path, size)
+}
+
+// progressPoller shells out to `brctl status com.apple.CloudDocs` — the
+// only progress source visible to non-entitled processes — at most once
+// per second, in the background.
+type progressPoller struct {
+	mu      sync.Mutex
+	entries []brctlEntry
+	fetched time.Time
+	running bool
+}
+
+var sharedPoller progressPoller
+
+func (p *progressPoller) get(path string, size int64) (float64, bool) {
+	p.mu.Lock()
+	if time.Since(p.fetched) > time.Second && !p.running {
+		p.running = true
+		go p.refresh()
+	}
+	entries := p.entries
+	p.mu.Unlock()
+	return progressFor(entries, path, size)
+}
+
+func (p *progressPoller) refresh() {
+	// brctl can answer in <100ms idle but routinely takes ~20s while
+	// fileproviderd is busy transferring. The timeout is only a guard
+	// against a truly hung process — the refresh is async, so a slow
+	// answer just means the percent updates lag by that much.
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "brctl", "status", "com.apple.CloudDocs").Output()
+	var entries []brctlEntry
+	if err == nil {
+		entries = parseBrctlStatus(string(out))
+	}
+	p.mu.Lock()
+	if err == nil {
+		p.entries = entries
+	}
+	p.fetched = time.Now()
+	p.running = false
+	p.mu.Unlock()
 }
 
 // WithNoMaterialize runs fn on an OS thread whose VFS iopolicy forbids

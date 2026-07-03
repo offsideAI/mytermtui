@@ -108,7 +108,11 @@ On modern macOS (FileProvider-based iCloud Drive), an evicted file is a *datales
 
 - detects evicted files with one `lstat` (`st_flags & SF_DATALESS`);
 - starts downloads with `NSFileManager startDownloadingUbiquitousItemAtURL:` and evicts with `evictUbiquitousItemAtURL:` (a small cgo bridge, `mytermtui-src/internal/icloud/bridge_darwin.go`);
-- tracks progress by polling `st_blocks` growth toward the logical size — cheap and dependency-free.
+- reads live percentages by polling Apple's entitled `brctl status`
+  (fileproviderd stages downloads out of view — blocks appear only at
+  completion — and hides its progress from non-entitled processes, so
+  `brctl` is the one accessible source; updates can lag ~20s while the
+  daemon is busy).
 
 ### The status column
 

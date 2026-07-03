@@ -12,6 +12,13 @@ type Bridge interface {
 	// Trash moves the item to the user's Trash with Finder put-back
 	// semantics, returning the item's new location inside the Trash.
 	Trash(path string) (putback string, err error)
+	// DownloadProgress reports the percent downloaded (0–100) for a
+	// file currently being materialized. fileproviderd stages downloads
+	// out of view (st_blocks stays 0 until completion) and hides its
+	// progress from non-entitled processes, so the darwin bridge polls
+	// Apple's entitled `brctl status` and matches items by name pattern
+	// and size — see brctl.go.
+	DownloadProgress(path string, size int64) (pct float64, ok bool)
 }
 
 // ErrUnsupported is returned by the stub bridge on non-darwin platforms.

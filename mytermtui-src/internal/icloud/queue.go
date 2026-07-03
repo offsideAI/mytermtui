@@ -202,18 +202,31 @@ func (q *Queue) Tick() Snapshot {
 			continue
 		}
 		it.Size = size
-		if local > size {
-			local = size
-		}
-		it.Got = local
 		if !dataless {
 			it.Got = size
 			it.State = StateDone
 			changed = true
 			continue
 		}
-		if local > it.lastGot {
-			it.lastGot = local
+		// Still dataless. Blocks stay 0 while fileproviderd stages the
+		// download, so prefer brctl's percentage when it has one. Never
+		// regress below the best value seen: brctl polls are slow under
+		// load and gaps must not bounce the bar back to zero.
+		got := local
+		if pct, ok := q.bridge.DownloadProgress(it.Path, size); ok {
+			if p := int64(pct / 100 * float64(size)); p > got {
+				got = p
+			}
+		}
+		if got < it.lastGot {
+			got = it.lastGot
+		}
+		if got > size {
+			got = size
+		}
+		it.Got = got
+		if got > it.lastGot {
+			it.lastGot = got
 			it.lastChange = q.now()
 			if it.State != StateDownloading {
 				it.State = StateDownloading

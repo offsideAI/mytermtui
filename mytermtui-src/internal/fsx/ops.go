@@ -92,7 +92,7 @@ func TotalSize(src string) int64 {
 // (dst must not exist). On APFS it first attempts clonefile(2), which is
 // instant, copy-on-write, and preserves everything including xattrs.
 func CopyPath(src, dst string, prog *Progress) error {
-	if err := unix.Clonefile(src, dst, unix.CLONE_NOFOLLOW); err == nil {
+	if err := clonefile(src, dst); err == nil {
 		if prog != nil {
 			prog.Add(TotalSize(dst))
 		}

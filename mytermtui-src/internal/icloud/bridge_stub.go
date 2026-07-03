@@ -17,6 +17,8 @@ func NewBridge() Bridge { return stubBridge{} }
 func (stubBridge) StartDownload(string) error { return ErrUnsupported }
 func (stubBridge) Evict(string) error         { return ErrUnsupported }
 
+func (stubBridge) DownloadProgress(string, int64) (float64, bool) { return 0, false }
+
 func (stubBridge) Trash(path string) (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {

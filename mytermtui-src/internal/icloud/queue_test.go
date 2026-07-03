@@ -14,6 +14,7 @@ type fakeBridge struct {
 	started   []string
 	evicted   []string
 	failStart map[string]error
+	pct       map[string]float64 // simulated brctl percent
 }
 
 func (f *fakeBridge) StartDownload(p string) error {
@@ -32,6 +33,22 @@ func (f *fakeBridge) Evict(p string) error {
 	return nil
 }
 func (f *fakeBridge) Trash(string) (string, error) { return "", errors.New("not used") }
+
+func (f *fakeBridge) DownloadProgress(p string, _ int64) (float64, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	v, ok := f.pct[p]
+	return v, ok
+}
+
+func (f *fakeBridge) setPct(p string, v float64) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.pct == nil {
+		f.pct = map[string]float64{}
+	}
+	f.pct[p] = v
+}
 
 // fakeFS simulates per-path materialization state.
 type fakeFS struct {
@@ -114,6 +131,37 @@ func TestQueueLifecycle(t *testing.T) {
 	}
 	if q.HasActive() {
 		t.Fatal("queue should be idle")
+	}
+}
+
+// Downloads are staged out of view by fileproviderd: st_blocks stays 0
+// (local bytes never grow) until the finished file swaps in. Progress
+// must therefore come from the bridge's brctl-derived percent.
+func TestQueueProgressFromMetadataWhileBlocksStayZero(t *testing.T) {
+	b := &fakeBridge{}
+	fs := newFakeFS()
+	fs.set("/a", 1000, 0) // dataless with zero local bytes the whole time
+	q := newTestQueue(t, b, fs, 1)
+	q.Add("/a")
+
+	q.Tick() // starts the download; no percent known yet
+	b.setPct("/a", 40)
+	s := q.Tick()
+	if s.Items[0].State != StateDownloading || s.Items[0].Got != 400 {
+		t.Fatalf("with 40%% metadata: state=%v got=%d, want downloading/400", s.Items[0].State, s.Items[0].Got)
+	}
+
+	b.setPct("/a", 90)
+	s = q.Tick()
+	if s.Items[0].Got != 900 {
+		t.Fatalf("got = %d, want 900", s.Items[0].Got)
+	}
+
+	// Completion is still detected by the dataless flag clearing.
+	fs.set("/a", 1000, 1000)
+	s = q.Tick()
+	if s.Items[0].State != StateDone || s.Items[0].Got != 1000 {
+		t.Fatalf("done: state=%v got=%d", s.Items[0].State, s.Items[0].Got)
 	}
 }
 

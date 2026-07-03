@@ -27,7 +27,7 @@ These were verified on the target machine (macOS 26.4, Darwin 25.4.0) and are th
    - Trash: `-[NSFileManager trashItemAtURL:resultingItemURL:error:]`.
 6. **Fallback download without cgo:** simply `open()` + `read()` a dataless file — the kernel materializes it on access (blocking). Usable but inferior (blocks a thread per file, no cancel). cgo path is the primary mechanism.
 7. **Accidental-download hazard:** any tool that reads file contents (preview, checksum, grep) will silently trigger a download of a dataless file. The app must guard against this: a thread can opt out via `setiopolicy_np(IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES, IOPOL_SCOPE_THREAD, IOPOL_MATERIALIZE_DATALESS_FILES_OFF)`, after which reads on dataless files fail with `EDEADLK` instead of downloading. The preview pane MUST run under this policy or skip dataless files.
-8. **Progress:** for an individual materializing file, `st_blocks` grows toward `st_size / 512` — polling `lstat` gives cheap, dependency-free per-file progress. (`NSMetadataQuery` percent-downloaded is a possible later enhancement.)
+8. **Progress (revised after implementation):** fileproviderd stages downloads out of view — `st_blocks` stays 0 and `SF_DATALESS` remains set until the finished payload is swapped in — so lstat polling shows nothing. Spotlight hides ubiquitous attributes from non-entitled processes, and `NSProgress` file-progress subscriptions receive no publications (both verified empirically). The one accessible source is Apple's entitled `brctl status`, which prints per-item `downloading:NN.N%` lines with elided names (`first{middle-count}last.ext`) and exact sizes; the app polls it asynchronously and matches items by directory, size, and name pattern.
 9. **Filenames contain exotic Unicode** (e.g. screen-recording names use U+202F narrow no-break space before "PM"). All paths are opaque bytes end-to-end; never round-trip through shell strings. Display through a sanitizer that preserves visual fidelity.
 
 ---
@@ -181,7 +181,7 @@ mytermtui/
   - FIFO of items (file paths; directories expand to their dataless descendants via a background walk that reads only listings, never contents).
   - Concurrency: fileproviderd does the actual transfer, so "start" is cheap — but we cap in-flight materializations (default 3) to keep progress legible and disk pressure sane.
   - Per-item lifecycle: `queued → starting → downloading(pct) → done | failed(err) | cancelled`.
-  - **Progress:** 500 ms `lstat` poll per in-flight item: `pct = blocks*512 / size`; overall bar aggregates bytes. Stalled > 30 s ⇒ marked `stalled` with hint (network/quota).
+  - **Progress:** 500 ms tick per in-flight item; percent comes from a throttled async `brctl status` parse (see §1.8), never regressing between slow polls; overall bar aggregates bytes. Stalled > 30 s ⇒ marked `stalled` with hint (network/quota).
   - **Cancel:** best-effort — evict the partially-materialized item. Persisted queue (JSON in state dir) so an interrupted session can resume marks.
 - **Safety rails:** the preview/info goroutines set `IOPOL_MATERIALIZE_DATALESS_FILES_OFF` (via the bridge) so *only* explicit queue items ever trigger downloads. Evict requires confirm and skips files with unsynced local changes (best-effort check via `brctl status` parse; on ambiguity, warn).
 
