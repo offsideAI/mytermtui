@@ -1,0 +1,5 @@
+mytermtui
+dist/
+.DS_Store
+*.log
+screenshots/ansi/
