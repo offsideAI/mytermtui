@@ -57,7 +57,7 @@ Top to bottom:
 | Want to… | Press |
 |---|---|
 | Move the cursor | `↑`/`↓` or `k`/`j` (`g`/`G` first/last, `pgup`/`pgdn` pages) |
-| Open a folder / file | `enter` (also `→`/`l`). Files open in their default app |
+| Open a folder / reveal a file | `enter` (also `→`/`l`). Folders are entered; files are revealed in their enclosing folder in Finder (set `enter_opens_file = "app"` to open them instead — `o` always opens in the app) |
 | Go to the parent | `backspace` (also `←`/`h`) — cursor lands on the folder you left |
 | Go back / forward | `[` / `]` (also `alt+←`/`alt+→`), like a browser |
 | Jump home / root / iCloud | `~` / `/` / `i` |
@@ -113,7 +113,7 @@ permissions, timestamps, and iCloud state:
 
 ![Get Info: a 2.91 GB movie occupying 0 bytes on disk — evicted](screenshots/05-get-info.png)
 
-**Hand off to macOS:** `q` Quick Look (floating preview window), `O`
+**Hand off to macOS:** `o` open in the default app, `q` Quick Look (floating preview window), `O`
 open with a named app, `R` reveal in Finder, `T` open Terminal here,
 `.` copy the full path(s) to the system clipboard.
 

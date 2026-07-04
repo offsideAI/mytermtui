@@ -15,6 +15,10 @@ type General struct {
 	ConfirmTrash bool   `toml:"confirm_trash"`
 	DirsFirst    bool   `toml:"dirs_first"`
 	ShowHints    bool   `toml:"show_hints"` // nano-style shortcut bar
+	// EnterOpensFile controls what enter does on a file: "reveal" shows
+	// it in its enclosing folder in Finder (default); "app" opens it in
+	// its default application (the o key always does that regardless).
+	EnterOpensFile string `toml:"enter_opens_file"`
 }
 
 type ICloud struct {
@@ -36,11 +40,12 @@ type Config struct {
 func Default() Config {
 	return Config{
 		General: General{
-			StartDir:     "~",
-			ShowHidden:   false,
-			ConfirmTrash: true,
-			DirsFirst:    true,
-			ShowHints:    true,
+			StartDir:       "~",
+			ShowHidden:     false,
+			ConfirmTrash:   true,
+			DirsFirst:      true,
+			ShowHints:      true,
+			EnterOpensFile: "reveal",
 		},
 		ICloud: ICloud{
 			MaxConcurrentDownloads: 3,
@@ -92,6 +97,9 @@ func Load(path string) (Config, error) {
 	}
 	if cfg.ICloud.PollIntervalMs < 100 {
 		cfg.ICloud.PollIntervalMs = 500
+	}
+	if cfg.General.EnterOpensFile != "app" {
+		cfg.General.EnterOpensFile = "reveal"
 	}
 	return cfg, nil
 }

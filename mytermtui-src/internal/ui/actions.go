@@ -51,6 +51,15 @@ func (m *Model) dispatch(act Action) tea.Cmd {
 		return m.moveCursor(m.listHeight())
 	case ActOpen:
 		return m.openAction()
+	case ActOpenApp:
+		e := m.currentEntry()
+		if e == nil {
+			return nil
+		}
+		if e.IsDir {
+			return m.navigateTo(e.Path, "")
+		}
+		return m.openInApp(*e)
 	case ActParent:
 		parent := filepath.Dir(m.cwd)
 		if parent == m.cwd {
@@ -253,6 +262,8 @@ func (m *Model) dispatch(act Action) tea.Cmd {
 
 // --- open ------------------------------------------------------------------
 
+// openAction handles enter: directories are entered; files either get
+// revealed in Finder or opened in their app, per config.
 func (m *Model) openAction() tea.Cmd {
 	e := m.currentEntry()
 	if e == nil {
@@ -261,6 +272,16 @@ func (m *Model) openAction() tea.Cmd {
 	if e.IsDir {
 		return m.navigateTo(e.Path, "")
 	}
+	if m.cfg.General.EnterOpensFile == "app" {
+		return m.openInApp(*e)
+	}
+	// Revealing reads no file contents, so it is safe even on ☁ files.
+	return execCmd("reveal", "open", "-R", e.Path)
+}
+
+// openInApp launches the file in its default application, confirming
+// first when that would trigger an iCloud download.
+func (m *Model) openInApp(e fsx.Entry) tea.Cmd {
 	if e.Dataless {
 		path := e.Path
 		m.modal = &ConfirmModal{

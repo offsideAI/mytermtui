@@ -30,6 +30,7 @@ const (
 	ActSelectAll   Action = "select_all"
 	ActClearSelect Action = "clear_select"
 
+	ActOpenApp   Action = "open_app"
 	ActCopy      Action = "copy"
 	ActCut       Action = "cut"
 	ActPaste     Action = "paste"
@@ -87,6 +88,7 @@ var defaultBindings = map[Action][]string{
 	ActSelectAll:   {"a"},
 	ActClearSelect: {"A"},
 
+	ActOpenApp:   {"o"},
 	ActCopy:      {"c"},
 	ActCut:       {"x"},
 	ActPaste:     {"p"},
@@ -170,7 +172,7 @@ type helpSection struct {
 var helpSections = []helpSection{
 	{"Navigate", []Action{ActUp, ActDown, ActOpen, ActParent, ActTop, ActBottom, ActPageUp, ActPageDown, ActBack, ActForward, ActHome, ActRoot, ActICloud, ActGotoPath, ActHidden, ActSort, ActFilter, ActFuzzyFind, ActRefresh}},
 	{"Select", []Action{ActSelect, ActRangeSel, ActSelectAll, ActClearSelect}},
-	{"Files", []Action{ActCopy, ActCut, ActPaste, ActRename, ActTrash, ActDuplicate, ActNewFolder, ActNewFile, ActOpenWith, ActQuickLook, ActGetInfo, ActCompress, ActReveal, ActTerminal, ActCopyPath, ActUndo}},
+	{"Files", []Action{ActOpenApp, ActCopy, ActCut, ActPaste, ActRename, ActTrash, ActDuplicate, ActNewFolder, ActNewFile, ActOpenWith, ActQuickLook, ActGetInfo, ActCompress, ActReveal, ActTerminal, ActCopyPath, ActUndo}},
 	{"iCloud", []Action{ActDownload, ActEvict, ActQueue, ActSummary}},
 	{"App", []Action{ActPreview, ActHints, ActHelp, ActMenu, ActQuit}},
 }
@@ -178,7 +180,8 @@ var helpSections = []helpSection{
 var actionHelp = map[Action]string{
 	ActUp:        "move up",
 	ActDown:      "move down",
-	ActOpen:      "open dir / file",
+	ActOpen:      "enter dir / reveal file in Finder",
+	ActOpenApp:   "open in default app",
 	ActParent:    "parent directory",
 	ActTop:       "first entry",
 	ActBottom:    "last entry",

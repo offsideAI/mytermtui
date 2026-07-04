@@ -185,12 +185,12 @@ Defaults:
 
 | Group | Keys |
 |---|---|
-| **Move** | `↑↓`/`kj` cursor · `enter`/`→`/`l` open · `←`/`h`/`bksp` parent · `g`/`G` top/bottom · `pgup`/`pgdn` page |
+| **Move** | `↑↓`/`kj` cursor · `enter`/`→`/`l` open dir / reveal file in Finder · `←`/`h`/`bksp` parent · `g`/`G` top/bottom · `pgup`/`pgdn` page |
 | **Go** | `[` `]` history · `~` home · `/` root · `i` iCloud Drive · `:` go to path |
 | **View** | `z` hidden files · `s` sort · `f` filter · `F` fuzzy find · `F3`/`P` preview · `H` shortcut bar · `ctrl+r` refresh |
 | **Select** | `space` toggle · `v` range · `a` all · `A`/`esc` clear |
 | **Files** | `c` copy · `x` cut · `p` paste · `r`/`F2` rename · `D`/`F8` trash · `ctrl+d` duplicate · `n` folder · `N` file · `u` undo |
-| **Open/Info** | `o` open · `O` open with · `q` Quick Look · `I` get info · `Z` compress · `R` reveal · `T` terminal · `.` copy path |
+| **Open/Info** | `o` open in default app · `O` open with · `q` Quick Look · `I` get info · `Z` compress · `R` reveal · `T` terminal · `.` copy path |
 | **iCloud** | `d` download · `e` evict · `Q` queue manager · `S` folder summary |
 | **App** | `m`/`F10` menus · `?`/`F1` help · `ctrl+q` quit |
 

@@ -139,6 +139,30 @@ func TestHiddenToggle(t *testing.T) {
 	}
 }
 
+func TestEnterOnFileRevealsNotOpens(t *testing.T) {
+	m := drive(t, map[string]string{"doc.txt": "x"})
+	if m.cfg.General.EnterOpensFile != "reveal" {
+		t.Fatalf("default enter_opens_file = %q, want reveal", m.cfg.General.EnterOpensFile)
+	}
+	cwd := m.cwd
+	cmd := key(t, m, "enter") // cursor is on doc.txt (only entry)
+	if cmd == nil {
+		t.Fatal("enter on a file returned no command")
+	}
+	// Must not navigate, must not open a modal — it shells out to
+	// `open -R` (not executed here).
+	if m.cwd != cwd || m.modal != nil || m.loading {
+		t.Fatalf("enter on file changed browser state: cwd=%q modal=%T loading=%v", m.cwd, m.modal, m.loading)
+	}
+
+	// With enter_opens_file = "app", plain files go to the app opener.
+	m2 := drive(t, map[string]string{"doc.txt": "x"})
+	m2.cfg.General.EnterOpensFile = "app"
+	if cmd := key(t, m2, "enter"); cmd == nil {
+		t.Fatal("enter (app mode) returned no command")
+	}
+}
+
 func TestMenuOpensAndNavigates(t *testing.T) {
 	m := drive(t, map[string]string{"a.txt": "x"})
 	key(t, m, "m")

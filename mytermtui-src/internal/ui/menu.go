@@ -17,7 +17,8 @@ func sep() menuItem { return menuItem{sep: true} }
 
 var menus = []menuDef{
 	{"File", []menuItem{
-		{label: "Open", action: ActOpen},
+		{label: "Open / Reveal", action: ActOpen},
+		{label: "Open in App", action: ActOpenApp},
 		{label: "Open With…", action: ActOpenWith},
 		{label: "Quick Look", action: ActQuickLook},
 		sep(),
