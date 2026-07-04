@@ -55,6 +55,7 @@ func buildScenes(filter string) []scene {
 			keys: append(append([]string{}, typeFilter...), "esc", "I")},
 		{name: "06-help", theme: "default", keys: []string{"?"}},
 		{name: "07-theme-dracula", theme: "dracula", keys: []string{"j", "j", "space", "j"}},
+		{name: "08-dual-panel", theme: "default", keys: []string{"right", "j"}},
 	}
 }
 
@@ -148,6 +149,10 @@ func keyMsg(k string) tea.KeyMsg {
 		return tea.KeyMsg{Type: tea.KeyDown}
 	case "F3":
 		return tea.KeyMsg{Type: tea.KeyF3}
+	case "right":
+		return tea.KeyMsg{Type: tea.KeyRight}
+	case "tab":
+		return tea.KeyMsg{Type: tea.KeyTab}
 	}
 	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)}
 }

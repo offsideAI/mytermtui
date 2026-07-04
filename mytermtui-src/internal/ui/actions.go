@@ -51,6 +51,16 @@ func (m *Model) dispatch(act Action) tea.Cmd {
 		return m.moveCursor(m.listHeight())
 	case ActOpen:
 		return m.openAction()
+	case ActOpenRight:
+		return m.openRightAction()
+	case ActSwapPane:
+		return m.swapPaneAction()
+	case ActClosePane:
+		return m.closePaneAction()
+	case ActPaneNarrow:
+		return m.resizePaneAction(-0.05)
+	case ActPaneWiden:
+		return m.resizePaneAction(+0.05)
 	case ActOpenApp:
 		e := m.currentEntry()
 		if e == nil {
@@ -272,8 +282,13 @@ func (m *Model) openAction() tea.Cmd {
 	if e.IsDir {
 		return m.navigateTo(e.Path, "")
 	}
+	return m.openFileAction(*e)
+}
+
+// openFileAction applies the configured enter-on-file behavior.
+func (m *Model) openFileAction(e fsx.Entry) tea.Cmd {
 	if m.cfg.General.EnterOpensFile == "app" {
-		return m.openInApp(*e)
+		return m.openInApp(e)
 	}
 	// Revealing reads no file contents, so it is safe even on ☁ files.
 	return execCmd("reveal", "open", "-R", e.Path)

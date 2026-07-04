@@ -15,6 +15,9 @@ type General struct {
 	ConfirmTrash bool   `toml:"confirm_trash"`
 	DirsFirst    bool   `toml:"dirs_first"`
 	ShowHints    bool   `toml:"show_hints"` // nano-style shortcut bar
+	// SplitRatio is the left panel's share of the width when the
+	// dual-panel view is open (0.15–0.85).
+	SplitRatio float64 `toml:"split_ratio"`
 	// EnterOpensFile controls what enter does on a file: "reveal" shows
 	// it in its enclosing folder in Finder (default); "app" opens it in
 	// its default application (the o key always does that regardless).
@@ -45,6 +48,7 @@ func Default() Config {
 			ConfirmTrash:   true,
 			DirsFirst:      true,
 			ShowHints:      true,
+			SplitRatio:     0.30,
 			EnterOpensFile: "reveal",
 		},
 		ICloud: ICloud{
@@ -100,6 +104,9 @@ func Load(path string) (Config, error) {
 	}
 	if cfg.General.EnterOpensFile != "app" {
 		cfg.General.EnterOpensFile = "reveal"
+	}
+	if cfg.General.SplitRatio < 0.15 || cfg.General.SplitRatio > 0.85 {
+		cfg.General.SplitRatio = 0.30
 	}
 	return cfg, nil
 }

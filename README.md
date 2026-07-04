@@ -39,6 +39,7 @@ Built with Go + [Bubble Tea](https://github.com/charmbracelet/bubbletea). Ships 
 | **No accidental downloads** | Previews and browsing can never materialize an evicted file; operations that would (copy, compress) ask first |
 | **Finder-parity file ops** | Copy/cut/paste with conflict dialog, rename, duplicate, native recoverable Trash, new file/folder, compress, Quick Look, Get Info, reveal in Finder, undo |
 | **Fast navigation** | Vim keys *and* arrow keys, history back/forward, go-to-path with tab completion, per-directory filter, recursive fuzzy find |
+| **Dual panels** | `→` opens a folder in a right panel (resizable split); `tab` switches focus, each panel keeping its own cursor and selection |
 | **Discoverable UI** | Pull-down menus, nano-style shortcut bar, searchable help overlay — no memorization required |
 | **Configurable** | TOML config: rebind every key, three color themes, tuning knobs |
 
@@ -99,6 +100,10 @@ A 60-second tour:
 - **Preview panel** — `F3` (or `P`) splits the view. Text files show their head, folders show their contents, and evicted files show their cloud status *without downloading anything* (see below).
 
 - **Status bar** — selection count and size, item count, transient results of operations, sort order.
+
+- **Dual panels** — press `→` (or `l`) on a folder to open it in a right panel while the current listing docks left; `tab` switches focus (each panel keeps its own cursor, selection, filter, and history), `←` in the right panel steps back to the left one, `<`/`>` resize the split, `ctrl+w` closes it. The default split is 30/70 (`split_ratio` in config).
+
+  ![Dual panels: repo root docked left, mytermtui-src open in the focused right panel](screenshots/08-dual-panel.png)
 
 ## Working with iCloud Drive
 
@@ -186,7 +191,8 @@ Defaults:
 
 | Group | Keys |
 |---|---|
-| **Move** | `↑↓`/`kj` cursor · `enter`/`→`/`l` open dir / reveal file in Finder · `←`/`h`/`bksp` parent · `g`/`G` top/bottom · `pgup`/`pgdn` page |
+| **Move** | `↑↓`/`kj` cursor · `enter` open dir / reveal file in Finder · `←`/`h`/`bksp` parent · `g`/`G` top/bottom · `pgup`/`pgdn` page |
+| **Panels** | `→`/`l` open folder in right panel · `tab` switch focus · `←` (right panel) back to left · `<`/`>` resize · `ctrl+w` close |
 | **Go** | `[` `]` history · `~` home · `/` root · `i` iCloud Drive · `:` go to path |
 | **View** | `z` hidden files · `s` sort · `f` filter · `F` fuzzy find · `F3`/`P` preview · `H` shortcut bar · `ctrl+r` refresh |
 | **Select** | `space` toggle · `v` range · `a` all · `A`/`esc` clear |

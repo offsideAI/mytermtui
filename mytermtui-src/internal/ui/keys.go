@@ -30,23 +30,28 @@ const (
 	ActSelectAll   Action = "select_all"
 	ActClearSelect Action = "clear_select"
 
-	ActOpenApp   Action = "open_app"
-	ActCopy      Action = "copy"
-	ActCut       Action = "cut"
-	ActPaste     Action = "paste"
-	ActRename    Action = "rename"
-	ActTrash     Action = "trash"
-	ActDuplicate Action = "duplicate"
-	ActNewFolder Action = "new_folder"
-	ActNewFile   Action = "new_file"
-	ActOpenWith  Action = "open_with"
-	ActQuickLook Action = "quick_look"
-	ActGetInfo   Action = "get_info"
-	ActCompress  Action = "compress"
-	ActReveal    Action = "reveal"
-	ActTerminal  Action = "terminal"
-	ActCopyPath  Action = "copy_path"
-	ActUndo      Action = "undo"
+	ActOpenApp    Action = "open_app"
+	ActOpenRight  Action = "open_right"
+	ActSwapPane   Action = "swap_pane"
+	ActClosePane  Action = "close_pane"
+	ActPaneNarrow Action = "pane_narrower"
+	ActPaneWiden  Action = "pane_wider"
+	ActCopy       Action = "copy"
+	ActCut        Action = "cut"
+	ActPaste      Action = "paste"
+	ActRename     Action = "rename"
+	ActTrash      Action = "trash"
+	ActDuplicate  Action = "duplicate"
+	ActNewFolder  Action = "new_folder"
+	ActNewFile    Action = "new_file"
+	ActOpenWith   Action = "open_with"
+	ActQuickLook  Action = "quick_look"
+	ActGetInfo    Action = "get_info"
+	ActCompress   Action = "compress"
+	ActReveal     Action = "reveal"
+	ActTerminal   Action = "terminal"
+	ActCopyPath   Action = "copy_path"
+	ActUndo       Action = "undo"
 
 	ActDownload Action = "download"
 	ActEvict    Action = "evict"
@@ -63,25 +68,30 @@ const (
 // defaultBindings: action → keys. Multiple keys may map to one action;
 // config overrides replace the whole list for that action.
 var defaultBindings = map[Action][]string{
-	ActUp:        {"up", "k"},
-	ActDown:      {"down", "j"},
-	ActOpen:      {"enter", "right", "l"},
-	ActParent:    {"left", "h", "backspace"},
-	ActTop:       {"g"},
-	ActBottom:    {"G"},
-	ActPageUp:    {"pgup", "ctrl+b"},
-	ActPageDown:  {"pgdown", "ctrl+f"},
-	ActBack:      {"[", "alt+left"},
-	ActForward:   {"]", "alt+right"},
-	ActHome:      {"~"},
-	ActRoot:      {"/"},
-	ActICloud:    {"i"},
-	ActGotoPath:  {":"},
-	ActHidden:    {"z"},
-	ActSort:      {"s"},
-	ActFilter:    {"f"},
-	ActFuzzyFind: {"F"},
-	ActRefresh:   {"ctrl+r"},
+	ActUp:         {"up", "k"},
+	ActDown:       {"down", "j"},
+	ActOpen:       {"enter"},
+	ActOpenRight:  {"right", "l"},
+	ActSwapPane:   {"tab"},
+	ActClosePane:  {"ctrl+w"},
+	ActPaneNarrow: {"<"},
+	ActPaneWiden:  {">"},
+	ActParent:     {"left", "h", "backspace"},
+	ActTop:        {"g"},
+	ActBottom:     {"G"},
+	ActPageUp:     {"pgup", "ctrl+b"},
+	ActPageDown:   {"pgdown", "ctrl+f"},
+	ActBack:       {"[", "alt+left"},
+	ActForward:    {"]", "alt+right"},
+	ActHome:       {"~"},
+	ActRoot:       {"/"},
+	ActICloud:     {"i"},
+	ActGotoPath:   {":"},
+	ActHidden:     {"z"},
+	ActSort:       {"s"},
+	ActFilter:     {"f"},
+	ActFuzzyFind:  {"F"},
+	ActRefresh:    {"ctrl+r"},
 
 	ActSelect:      {" ", "space"},
 	ActRangeSel:    {"v"},
@@ -170,7 +180,7 @@ type helpSection struct {
 }
 
 var helpSections = []helpSection{
-	{"Navigate", []Action{ActUp, ActDown, ActOpen, ActParent, ActTop, ActBottom, ActPageUp, ActPageDown, ActBack, ActForward, ActHome, ActRoot, ActICloud, ActGotoPath, ActHidden, ActSort, ActFilter, ActFuzzyFind, ActRefresh}},
+	{"Navigate", []Action{ActUp, ActDown, ActOpen, ActOpenRight, ActSwapPane, ActClosePane, ActPaneNarrow, ActPaneWiden, ActParent, ActTop, ActBottom, ActPageUp, ActPageDown, ActBack, ActForward, ActHome, ActRoot, ActICloud, ActGotoPath, ActHidden, ActSort, ActFilter, ActFuzzyFind, ActRefresh}},
 	{"Select", []Action{ActSelect, ActRangeSel, ActSelectAll, ActClearSelect}},
 	{"Files", []Action{ActOpenApp, ActCopy, ActCut, ActPaste, ActRename, ActTrash, ActDuplicate, ActNewFolder, ActNewFile, ActOpenWith, ActQuickLook, ActGetInfo, ActCompress, ActReveal, ActTerminal, ActCopyPath, ActUndo}},
 	{"iCloud", []Action{ActDownload, ActEvict, ActQueue, ActSummary}},
@@ -178,26 +188,31 @@ var helpSections = []helpSection{
 }
 
 var actionHelp = map[Action]string{
-	ActUp:        "move up",
-	ActDown:      "move down",
-	ActOpen:      "enter dir / reveal file in Finder",
-	ActOpenApp:   "open in default app",
-	ActParent:    "parent directory",
-	ActTop:       "first entry",
-	ActBottom:    "last entry",
-	ActPageUp:    "page up",
-	ActPageDown:  "page down",
-	ActBack:      "history back",
-	ActForward:   "history forward",
-	ActHome:      "home directory",
-	ActRoot:      "filesystem root",
-	ActICloud:    "iCloud Drive root",
-	ActGotoPath:  "go to path…",
-	ActHidden:    "toggle hidden files",
-	ActSort:      "sort options",
-	ActFilter:    "filter this directory",
-	ActFuzzyFind: "fuzzy find recursively",
-	ActRefresh:   "reload directory",
+	ActUp:         "move up",
+	ActDown:       "move down",
+	ActOpen:       "enter dir / reveal file in Finder",
+	ActOpenRight:  "open folder in right panel",
+	ActSwapPane:   "switch panel focus",
+	ActClosePane:  "close right panel",
+	ActPaneNarrow: "shrink left panel",
+	ActPaneWiden:  "widen left panel",
+	ActOpenApp:    "open in default app",
+	ActParent:     "parent directory",
+	ActTop:        "first entry",
+	ActBottom:     "last entry",
+	ActPageUp:     "page up",
+	ActPageDown:   "page down",
+	ActBack:       "history back",
+	ActForward:    "history forward",
+	ActHome:       "home directory",
+	ActRoot:       "filesystem root",
+	ActICloud:     "iCloud Drive root",
+	ActGotoPath:   "go to path…",
+	ActHidden:     "toggle hidden files",
+	ActSort:       "sort options",
+	ActFilter:     "filter this directory",
+	ActFuzzyFind:  "fuzzy find recursively",
+	ActRefresh:    "reload directory",
 
 	ActSelect:      "toggle selection",
 	ActRangeSel:    "range-select mode",

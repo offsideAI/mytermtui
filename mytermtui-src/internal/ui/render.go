@@ -114,23 +114,40 @@ func (m *Model) overlayMenu(lines []string) {
 
 func (m *Model) renderMain() []string {
 	listH := m.listHeight()
-	pw := 0
-	if m.previewOn && m.w >= 70 {
-		pw = min(44, m.w/3)
-	}
-	listW := m.w - pw
+	var lines []string
 
-	lines := make([]string, 0, listH+2)
-	lines = append(lines, m.renderBreadcrumb(listW))
-	lines = append(lines, m.renderHeader(listW))
-	for i := 0; i < listH; i++ {
-		lines = append(lines, m.renderRow(m.offset+i, listW))
-	}
-
-	if pw > 0 {
-		prev := m.renderPreview(pw, listH+2)
+	if m.split() {
+		lw := int(float64(m.w) * m.ratio)
+		if lw < 24 {
+			lw = 24
+		}
+		if lw > m.w-25 {
+			lw = m.w - 25
+		}
+		rw := m.w - lw - 1
+		leftRef, rightRef := m.liveRef(), refOf(m.other)
+		if m.focusRight {
+			leftRef, rightRef = refOf(m.other), m.liveRef()
+		}
+		left := m.paneLines(leftRef, lw, !m.focusRight, listH)
+		right := m.paneLines(rightRef, rw, m.focusRight, listH)
+		div := m.theme.PreviewMeta.Render("│")
+		lines = make([]string, listH+2)
 		for i := range lines {
-			lines[i] += prev[i]
+			lines[i] = left[i] + div + right[i]
+		}
+	} else {
+		pw := 0
+		if m.previewOn && m.w >= 70 {
+			pw = min(44, m.w/3)
+		}
+		listW := m.w - pw
+		lines = m.paneLines(m.liveRef(), listW, true, listH)
+		if pw > 0 {
+			prev := m.renderPreview(pw, listH+2)
+			for i := range lines {
+				lines[i] += prev[i]
+			}
 		}
 	}
 
@@ -145,25 +162,48 @@ func (m *Model) renderMain() []string {
 	return lines
 }
 
-func (m *Model) renderBreadcrumb(width int) string {
+// paneLines renders one panel: breadcrumb, column header, listH rows.
+func (m *Model) paneLines(ref paneRef, width int, focused bool, listH int) []string {
+	lines := make([]string, 0, listH+2)
+	lines = append(lines, m.renderBreadcrumbRef(ref, width, focused))
+	lines = append(lines, m.renderHeader(width))
+	off := ref.offset
+	// A parked panel's offset may be stale for the current height.
+	if ref.cursor < off {
+		off = ref.cursor
+	}
+	if ref.cursor >= off+listH {
+		off = ref.cursor - listH + 1
+	}
+	for i := 0; i < listH; i++ {
+		lines = append(lines, m.renderRowRef(ref, off+i, width, focused))
+	}
+	return lines
+}
+
+func (m *Model) renderBreadcrumbRef(ref paneRef, width int, focused bool) string {
 	t := m.theme
-	path := abbreviateHome(m.cwd, m.home)
+	path := abbreviateHome(ref.cwd, m.home)
 	prefix := " "
-	if icloud.InICloud(m.cwd) {
+	if icloud.InICloud(ref.cwd) {
 		prefix = " ☁ "
 	}
 	suffix := ""
-	if m.loading {
+	if focused && m.loading {
 		suffix = " " + spinnerFrames[m.tickN%len(spinnerFrames)]
 	}
-	if m.anchor >= 0 {
+	if ref.anchor >= 0 {
 		suffix += " [range-select]"
 	}
 	avail := width - lipgloss.Width(prefix) - lipgloss.Width(suffix) - 1
 	if avail < 8 {
 		avail = 8
 	}
-	line := prefix + t.Breadcrumb.Render(truncMiddle(sanitize(path), avail)) + suffix
+	style := t.Breadcrumb
+	if !focused {
+		style = t.HiddenDim
+	}
+	line := prefix + style.Render(truncMiddle(sanitize(path), avail)) + suffix
 	gap := width - lipgloss.Width(line)
 	if gap > 0 {
 		line += strings.Repeat(" ", gap)
@@ -185,22 +225,26 @@ func nameColWidth(listW int) int {
 	return w
 }
 
-func (m *Model) renderRow(vi, width int) string {
+func (m *Model) renderRowRef(ref paneRef, vi, width int, focused bool) string {
 	t := m.theme
-	if vi >= len(m.view) {
-		if vi == 0 && len(m.view) == 0 {
+	if vi >= len(ref.view) {
+		if vi == 0 && len(ref.view) == 0 {
 			msg := "(empty)"
-			if m.filterText != "" {
+			if ref.filter != "" {
 				msg = "(no matches)"
 			}
 			return t.HiddenDim.Render(pad("    "+msg, width))
 		}
 		return strings.Repeat(" ", width)
 	}
-	e := m.entries[m.view[vi]]
+	ei := ref.view[vi]
+	if ei < 0 || ei >= len(ref.entries) {
+		return strings.Repeat(" ", width)
+	}
+	e := ref.entries[ei]
 
 	sel := " "
-	if m.selected[e.Path] || m.inRange(vi) {
+	if ref.selected[e.Path] || ref.inRange(vi) {
 		sel = "●"
 	}
 	icon := "  "
@@ -223,9 +267,10 @@ func (m *Model) renderRow(vi, width int) string {
 	plain = pad(plain, width)
 
 	switch {
-	case vi == m.cursor:
+	case vi == ref.cursor && focused:
 		return t.Cursor.Render(plain)
-	case sel == "●":
+	case vi == ref.cursor || sel == "●":
+		// The parked panel's remembered cursor keeps a subtle highlight.
 		return t.Selected.Render(plain)
 	}
 

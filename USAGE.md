@@ -126,6 +126,29 @@ also how you *learn* the shortcuts:
 
 ![The File menu, each item labeled with its key](screenshots/04-file-menu.png)
 
+## Two-panel browsing
+
+Press `→` (or `l`) on a folder and it opens in a **right panel** taking
+70% of the width, with the listing you came from docked on the left:
+
+![Two panels: parent listing left, opened folder focused on the right](screenshots/08-dual-panel.png)
+
+- **`tab`** switches focus between the panels. Each panel remembers its
+  own cursor position, selection, filter, and back/forward history —
+  and every operation (copy, trash, download, …) acts on the focused
+  panel.
+- **`←`** in the right panel steps focus back to the left panel
+  (`backspace` still goes to the parent folder). Pressing `→` on a
+  folder *inside* the right panel cascades: the right panel becomes the
+  left one and the new folder opens on the right.
+- **`<` / `>`** shrink/widen the left panel in 5% steps (0.15–0.85);
+  the starting share is `split_ratio` in the config (default 0.30).
+- **`ctrl+w`** closes the split, keeping the left panel.
+- A handy pattern: select files in one panel, `tab` to the other, `p`
+  to paste them there.
+
+The preview panel (`F3`) is available in single-panel mode.
+
 ## Finding things
 
 **Filter the current folder** — press `f` and type; the list narrows as

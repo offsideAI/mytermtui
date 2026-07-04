@@ -39,16 +39,21 @@ func (m *Model) hintRows() [][]hint {
 			{key: "esc", label: "clear"},
 		}}
 	}
+	row1 := []hint{
+		{act: ActMenu, label: "menu"},
+		{act: ActHelp, label: "help"},
+		{key: "enter", label: "open"},
+		{key: "bksp", label: "up"},
+	}
+	if m.split() {
+		row1 = append(row1, hint{act: ActSwapPane, label: "panel"})
+	}
 	return [][]hint{
-		{
-			{act: ActMenu, label: "menu"},
-			{act: ActHelp, label: "help"},
-			{key: "enter", label: "open"},
-			{key: "bksp", label: "up"},
-			{act: ActSelect, label: "select"},
-			{act: ActDownload, label: "download"},
-			{act: ActEvict, label: "evict"},
-		},
+		append(row1,
+			hint{act: ActSelect, label: "select"},
+			hint{act: ActDownload, label: "download"},
+			hint{act: ActEvict, label: "evict"},
+		),
 		{
 			{act: ActCopy, label: "copy"},
 			{act: ActCut, label: "cut"},

@@ -95,6 +95,10 @@ type Model struct {
 	pendingNav navIntent
 	loading    bool
 
+	other      *paneState // parked panel when the dual-panel view is open
+	focusRight bool       // which side the live fields represent
+	ratio      float64    // left panel's share of the width
+
 	previewOn bool
 	hintsOn   bool
 	prevPath  string
@@ -139,6 +143,7 @@ func New(cfg config.Config, startDir string, bridge icloud.Bridge, queue *icloud
 		dirsFirst:   cfg.General.DirsFirst,
 		showHidden:  cfg.General.ShowHidden,
 		hintsOn:     cfg.General.ShowHints,
+		ratio:       cfg.General.SplitRatio,
 		filterInput: fi,
 	}
 	return m
@@ -267,7 +272,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// The old view indexes are meaningless against the new entries;
 		// drop them before rebuildView touches currentEntry.
 		if changedDir {
-			m.view = m.view[:0]
+			m.view = nil // fresh slice: never truncate a possibly-parked array
 			m.cursor = 0
 			m.offset = 0
 		}
@@ -425,6 +430,11 @@ func (m *Model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	if act, ok := m.keys.Lookup(key); ok {
+		// In the right panel, ← (and h) steps focus back to the left
+		// panel, column-style; backspace still goes to the parent.
+		if act == ActParent && m.split() && m.focusRight && key != "backspace" {
+			return m, m.dispatch(ActSwapPane)
+		}
 		return m, m.dispatch(act)
 	}
 	return m, nil
@@ -442,7 +452,7 @@ func (m *Model) rebuildView(keepPath string) {
 	// silently re-target the range onto different files.
 	m.anchor = -1
 	fsx.Sort(m.entries, m.sortBy, m.sortAsc, m.dirsFirst)
-	m.view = m.view[:0]
+	m.view = make([]int, 0, len(m.entries))
 	needle := strings.ToLower(m.filterText)
 	for i, e := range m.entries {
 		if !m.showHidden && e.Hidden {

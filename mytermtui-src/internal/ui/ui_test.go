@@ -62,6 +62,14 @@ func key(t *testing.T, m *Model, k string) tea.Cmd {
 		msg = tea.KeyMsg{Type: tea.KeyEsc}
 	case "down":
 		msg = tea.KeyMsg{Type: tea.KeyDown}
+	case "left":
+		msg = tea.KeyMsg{Type: tea.KeyLeft}
+	case "right":
+		msg = tea.KeyMsg{Type: tea.KeyRight}
+	case "tab":
+		msg = tea.KeyMsg{Type: tea.KeyTab}
+	case "ctrl+w":
+		msg = tea.KeyMsg{Type: tea.KeyCtrlW}
 	case " ":
 		msg = tea.KeyMsg{Type: tea.KeySpace}
 	default:
@@ -217,6 +225,81 @@ func TestQdirsAggregationUnderICloudRoot(t *testing.T) {
 	}
 	if _, ok := m.qdirs["/"]; ok {
 		t.Fatal("aggregation escaped the iCloud root")
+	}
+}
+
+func TestDualPanelOpenSwapClose(t *testing.T) {
+	m := drive(t, map[string]string{"sub/inner.txt": "x", "aaa.txt": "y"})
+	root := m.cwd
+
+	// → on the folder (cursor starts on "sub", dirs-first) opens it in
+	// the right panel and focuses it.
+	cmd := key(t, m, "right")
+	if !m.split() || !m.focusRight {
+		t.Fatalf("split=%v focusRight=%v after →", m.split(), m.focusRight)
+	}
+	step(t, m, cmd())
+	if filepath.Base(m.cwd) != "sub" || m.other.cwd != root {
+		t.Fatalf("cwd=%q other=%q", m.cwd, m.other.cwd)
+	}
+
+	// Select inside the right panel.
+	key(t, m, " ")
+	if len(m.selected) != 1 {
+		t.Fatalf("right panel selection = %d", len(m.selected))
+	}
+
+	// Tab returns to the left panel; the right panel's selection and
+	// cursor are remembered in the parked state.
+	cmd = key(t, m, "tab")
+	if m.focusRight || m.cwd != root {
+		t.Fatalf("after tab: focusRight=%v cwd=%q", m.focusRight, m.cwd)
+	}
+	if len(m.other.selected) != 1 {
+		t.Fatal("right panel selection was not remembered")
+	}
+	step(t, m, cmd()) // the reload of the newly focused panel
+
+	// Tab again → right panel; ← steps focus back to the left panel.
+	step(t, m, key(t, m, "tab")())
+	if !m.focusRight {
+		t.Fatal("second tab did not focus right panel")
+	}
+	cmd = key(t, m, "left")
+	if m.focusRight {
+		t.Fatal("← in right panel should focus the left panel")
+	}
+	step(t, m, cmd())
+
+	// ctrl+w collapses to a single panel (left survives).
+	key(t, m, "ctrl+w")
+	if m.split() || m.cwd != root {
+		t.Fatalf("after close: split=%v cwd=%q", m.split(), m.cwd)
+	}
+
+	// The split view renders both directory names side by side.
+	step(t, m, key(t, m, "right")())
+	view := m.View()
+	if !strings.Contains(view, "inner.txt") || !strings.Contains(view, "aaa.txt") {
+		t.Fatalf("split view missing panel contents:\n%s", view)
+	}
+}
+
+func TestPaneResizeAndConfigRatio(t *testing.T) {
+	m := drive(t, map[string]string{"sub/inner.txt": "x"})
+	if m.ratio != 0.30 {
+		t.Fatalf("default ratio = %v", m.ratio)
+	}
+	step(t, m, key(t, m, "right")())
+	key(t, m, "<")
+	if m.ratio != 0.25 {
+		t.Fatalf("ratio after < = %v", m.ratio)
+	}
+	for i := 0; i < 20; i++ {
+		key(t, m, ">")
+	}
+	if m.ratio > 0.85 {
+		t.Fatalf("ratio not clamped: %v", m.ratio)
 	}
 }
 

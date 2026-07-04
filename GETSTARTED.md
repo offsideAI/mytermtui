@@ -65,6 +65,7 @@ python3 scripts/ansi2png.py screenshots/ansi screenshots
 | `05-get-info.png` | `I` on a file |
 | `06-help.png` | `?` |
 | `07-theme-dracula.png` | set `[theme] name = "dracula"` in `~/.config/mytermtui/config.toml`, relaunch |
+| `08-dual-panel.png` | `→` on a folder, then `j` |
 
 4. Rename the captures exactly as above and move them into
    `screenshots/` — the README links expect those names.

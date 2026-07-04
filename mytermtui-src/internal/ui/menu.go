@@ -50,6 +50,9 @@ var menus = []menuDef{
 		{label: "Undo", action: ActUndo},
 	}},
 	{"View", []menuItem{
+		{label: "Switch Panel Focus", action: ActSwapPane},
+		{label: "Close Right Panel", action: ActClosePane},
+		sep(),
 		{label: "Toggle Hidden Files", action: ActHidden},
 		{label: "Toggle Preview Panel", action: ActPreview},
 		{label: "Toggle Shortcut Bar", action: ActHints},
