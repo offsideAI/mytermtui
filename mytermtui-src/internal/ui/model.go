@@ -105,6 +105,7 @@ type Model struct {
 
 	qsnap   icloud.Snapshot
 	qstate  map[string]icloud.ItemState // path → most relevant queue state
+	qdirs   map[string]icloud.ItemState // ancestor dir → aggregate state
 	ticking bool
 	tickN   int
 
@@ -486,14 +487,35 @@ func (m *Model) currentEntry() *fsx.Entry {
 
 // setQsnap stores a queue snapshot and rebuilds the path→state index the
 // renderer uses, keeping row-glyph lookup O(1) even with huge queues.
+// Active states are also aggregated onto every ancestor directory inside
+// iCloud, so a folder whose *contents* are queued or downloading carries
+// the ◌/⇣ glyph itself.
 func (m *Model) setQsnap(s icloud.Snapshot) {
 	m.qsnap = s
 	m.qstate = make(map[string]icloud.ItemState, len(s.Items))
+	m.qdirs = map[string]icloud.ItemState{}
+	root := icloud.MobileDocs()
+	// The ancestor fan-out is bounded: for absurdly large queues, skip
+	// aggregation rather than burn CPU every tick (folders degrade to ·).
+	aggregate := len(s.Items) <= 20000
 	for _, it := range s.Items {
 		if cur, ok := m.qstate[it.Path]; ok && activeState(cur) && !activeState(it.State) {
 			continue // an active entry for the path outranks finished ones
 		}
 		m.qstate[it.Path] = it.State
+		if !aggregate || !activeState(it.State) {
+			continue
+		}
+		state := icloud.StateQueued
+		if it.State != icloud.StateQueued {
+			state = icloud.StateDownloading // any in-flight descendant
+		}
+		for dir := filepath.Dir(it.Path); strings.HasPrefix(dir, root); dir = filepath.Dir(dir) {
+			if cur, ok := m.qdirs[dir]; ok && (state == icloud.StateQueued || cur == icloud.StateDownloading) {
+				continue // transferring outranks queued; no downgrade
+			}
+			m.qdirs[dir] = state
+		}
 	}
 }
 

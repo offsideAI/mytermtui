@@ -122,7 +122,8 @@ On modern macOS (FileProvider-based iCloud Drive), an evicted file is a *datales
 | `☁` (blue) | Evicted — exists only in iCloud |
 | `◌` (dim) | Marked for download, waiting in the queue |
 | `⇣` (yellow) | Downloading now |
-| `·` | Folder inside iCloud (contents not scanned) |
+| `◌` / `⇣` on a folder | Contents of that folder are queued / downloading |
+| `·` | Folder inside iCloud, nothing in flight (contents not scanned) |
 | *(blank)* | Outside iCloud |
 
 ### Downloading

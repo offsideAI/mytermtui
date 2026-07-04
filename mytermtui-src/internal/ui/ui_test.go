@@ -163,6 +163,63 @@ func TestEnterOnFileRevealsNotOpens(t *testing.T) {
 	}
 }
 
+func TestFolderGlyphAggregatesQueueState(t *testing.T) {
+	m := drive(t, map[string]string{"sub/inner.mov": "x", "plain.txt": "y"})
+	// Fake iCloud membership: glyphFor gates on InICloud, so point the
+	// entries at paths and mark them as in-cloud.
+	var sub *fsx.Entry
+	for i := range m.entries {
+		m.entries[i].InICloud = true
+		if m.entries[i].Name == "sub" {
+			sub = &m.entries[i]
+		}
+	}
+	if sub == nil {
+		t.Fatal("sub entry missing")
+	}
+
+	// A queued file inside sub → folder shows ◌.
+	m.setQsnap(icloud.Snapshot{Items: []icloud.Item{
+		{Path: filepath.Join(sub.Path, "inner.mov"), State: icloud.StateQueued},
+	}})
+	// qdirs aggregation only tracks ancestors under the iCloud root, so
+	// substitute the map directly for this synthetic tmpdir case…
+	if len(m.qdirs) != 0 {
+		t.Fatal("tmpdir paths must not aggregate under the iCloud root")
+	}
+	m.qdirs[sub.Path] = icloud.StateQueued
+	if g, _ := m.glyphFor(*sub); g != "◌" {
+		t.Fatalf("queued folder glyph = %q, want ◌", g)
+	}
+	m.qdirs[sub.Path] = icloud.StateDownloading
+	if g, _ := m.glyphFor(*sub); g != "⇣" {
+		t.Fatalf("downloading folder glyph = %q, want ⇣", g)
+	}
+	delete(m.qdirs, sub.Path)
+	if g, _ := m.glyphFor(*sub); g != "·" {
+		t.Fatalf("idle folder glyph = %q, want ·", g)
+	}
+}
+
+func TestQdirsAggregationUnderICloudRoot(t *testing.T) {
+	m := drive(t, map[string]string{"a.txt": "x"})
+	base := filepath.Join(icloud.MobileDocs(), "com~apple~CloudDocs", "proj", "deep")
+	m.setQsnap(icloud.Snapshot{Items: []icloud.Item{
+		{Path: filepath.Join(base, "one.mov"), State: icloud.StateQueued},
+		{Path: filepath.Join(base, "two.mov"), State: icloud.StateDownloading},
+	}})
+	// The transferring descendant outranks the queued one on every
+	// ancestor up to the iCloud root.
+	for _, dir := range []string{base, filepath.Dir(base)} {
+		if st, ok := m.qdirs[dir]; !ok || st != icloud.StateDownloading {
+			t.Fatalf("qdirs[%q] = %v ok=%v, want downloading", dir, st, ok)
+		}
+	}
+	if _, ok := m.qdirs["/"]; ok {
+		t.Fatal("aggregation escaped the iCloud root")
+	}
+}
+
 func TestMenuOpensAndNavigates(t *testing.T) {
 	m := drive(t, map[string]string{"a.txt": "x"})
 	key(t, m, "m")

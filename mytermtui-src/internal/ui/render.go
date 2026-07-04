@@ -260,13 +260,25 @@ func (m *Model) glyphFor(e fsx.Entry) (string, lipgloss.Style) {
 			return "⇣", t.GlyphActive
 		}
 	}
-	if e.Dataless {
-		return "☁", t.GlyphCloud
-	}
 	if e.IsDir {
+		// Folders inherit the aggregate state of queued/downloading
+		// descendants (built in setQsnap). Comma-ok matters: the zero
+		// ItemState is StateQueued.
+		if st, ok := m.qdirs[e.Path]; ok {
+			if st == icloud.StateDownloading {
+				return "⇣", t.GlyphActive
+			}
+			return "◌", t.GlyphQueued
+		}
+		if e.Dataless {
+			return "☁", t.GlyphCloud
+		}
 		// No recursive scan here: a materialized dir's listing is local,
 		// but children may still be evicted. Neutral dot.
 		return "·", t.HiddenDim
+	}
+	if e.Dataless {
+		return "☁", t.GlyphCloud
 	}
 	return "✓", t.GlyphLocal
 }
