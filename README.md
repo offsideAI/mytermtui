@@ -6,7 +6,7 @@
 
 Built with Go + [Bubble Tea](https://github.com/charmbracelet/bubbletea). Ships as a single binary.
 
-**Docs:** this README covers installation, concepts, and reference · [USAGE.md](USAGE.md) is the hands-on user manual · [SPEC.md](SPEC.md) is the original design spec · [GETSTARTED.md](GETSTARTED.md) explains regenerating the screenshots.
+**Docs:** this README covers installation, concepts, and reference · [USAGE.md](USAGE.md) is the hands-on user manual · [DEPLOY.md](DEPLOY.md) covers rebuild/install · [SPEC.md](SPEC.md) is the original design spec · [GETSTARTED.md](GETSTARTED.md) explains regenerating the screenshots.
 
 ![mytermtui browsing an iCloud folder: two selected videos, cloud-only glyphs, download hints](screenshots/01-browser.png)
 
