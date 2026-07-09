@@ -1,42 +1,46 @@
-# Deploying mytermtui
+# Deploying myterm & myconsole
 
-How to rebuild and install the binary after pulling or making changes.
+How to rebuild and install the binaries after pulling or making changes.
 
 ## Rebuild and install
 
 ```sh
-cd ~/repos/offsideai/githubrepos_workspace_active_1/mytermtui/mytermtui-src
-go build -o mytermtui . && install mytermtui /opt/homebrew/bin/   # or your install location
+cd ~/repos/offsideai/githubrepos_workspace_active_1/mytermtui
+
+go -C myterm-src    build -o myterm .
+go -C myconsole-src build -o myconsole .
+
+install myterm-src/myterm myconsole-src/myconsole /opt/homebrew/bin/   # or your install location
 ```
 
 Notes:
 
-- The Go module lives in `mytermtui-src/` — build from there, not the
-  repo root.
+- Each app is its own Go module in its `-src` folder — run `go` commands
+  from inside it, or use `go -C <dir>` as above.
 - `install` copies the binary and marks it executable (`755`) in one
   step. `/opt/homebrew/bin` is on `PATH` and user-writable on Apple
-  Silicon Macs; for `/usr/local/bin` you likely need
-  `sudo install mytermtui /usr/local/bin/`.
-- Any running mytermtui keeps executing the **old** binary — quit
-  (`ctrl+q`) and relaunch to pick up the new one. In-flight downloads
-  are unaffected (fileproviderd owns the transfers, and the queue
+  Silicon Macs; for `/usr/local/bin` you likely need `sudo install …`.
+- A running app keeps executing the **old** binary — quit (`ctrl+q`)
+  and relaunch to pick up the new one. In-flight downloads are
+  unaffected (fileproviderd owns the transfers, and each app's queue
   resumes from its persisted state).
 
 ## Verify
 
 ```sh
-which mytermtui       # the path you installed to
-mytermtui --version   # expected version
+which myterm myconsole
+myterm --version && myconsole --version
 ```
 
-Before deploying a change, run the checks from the repo root:
+Before deploying a change, run the checks:
 
 ```sh
-cd mytermtui-src && go test ./... && go vet ./...
+(cd myterm-src    && go test ./... && go vet ./...)
+(cd myconsole-src && go test ./... && go vet ./...)
 ```
 
 ## Alternatives
 
-- `go install` from `mytermtui-src/` places the binary in `~/go/bin`
+- `go install` from a `-src` folder places that binary in `~/go/bin`
   (add it to `PATH` once) without touching system directories.
-- Uninstall: `rm /opt/homebrew/bin/mytermtui` (or wherever it lives).
+- Uninstall: `rm /opt/homebrew/bin/myterm /opt/homebrew/bin/myconsole`.

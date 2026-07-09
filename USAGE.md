@@ -1,7 +1,15 @@
-# mytermtui — Usage Guide
+# MyTerm & MyConsole — Usage Guide
 
-A hands-on manual for day-to-day use. For installation, architecture,
-and configuration reference, see the [README](README.md).
+A hands-on manual for day-to-day use of both apps. For installation,
+architecture, and configuration reference, see the [README](README.md).
+
+Everything here applies to **both apps** except where marked. Both
+browse as an expandable tree with a right panel following the cursor;
+the difference is idiom. **myterm** (nvim-tree): `enter` toggles
+expansion, the right panel is a passive detail view, and `→` opens
+independent dual panels. **myconsole** (Windows Explorer): `→` expands
+(+ → −), `←` collapses / jumps to the parent row, and the right panel
+is a *focusable* contents pane — `tab` moves focus into it and back.
 
 - [Launching](#launching)
 - [Reading the screen](#reading-the-screen)
@@ -20,10 +28,10 @@ and configuration reference, see the [README](README.md).
 ## Launching
 
 ```sh
-mytermtui                    # start in ~ (or your configured start_dir)
-mytermtui ~/Downloads        # start in a specific folder
-mytermtui --version
-mytermtui --config /path/to/config.toml
+myterm                       # or myconsole — start in ~ (configurable)
+myterm ~/Downloads           # start in a specific folder
+myterm --version
+myterm --config /path/to/config.toml
 ```
 
 First launch over iCloud paths: if the status bar reports *operation not
@@ -32,7 +40,7 @@ Settings → Privacy & Security), then restart the terminal.
 
 Quit with `ctrl+q`. If downloads are running you'll be asked to confirm
 — the transfers themselves continue in macOS's `fileproviderd` either
-way, and mytermtui picks the progress tracking back up on relaunch.
+way, and the app picks the progress tracking back up on relaunch.
 
 ## Reading the screen
 
@@ -57,7 +65,10 @@ Top to bottom:
 | Want to… | Press |
 |---|---|
 | Move the cursor | `↑`/`↓` or `k`/`j` (`g`/`G` first/last, `pgup`/`pgdn` pages) |
-| Open a folder / reveal a file | `enter` (also `→`/`l`). Folders are entered; files are revealed in their enclosing folder in Finder (set `enter_opens_file = "app"` to open them instead — `o` always opens in the app) |
+| `enter` on a folder | Expand/collapse it in place (`▸`/`▾`) — both apps |
+| `→` on a folder | **myconsole:** expand; again → first child · **myterm:** open as dual panel |
+| `←` | **myconsole:** collapse / jump to parent row / re-root at parent dir · **myterm:** parent directory |
+| `enter` on a file | **myconsole:** open it in the embedded editor · **myterm:** reveal it in Finder (`enter_opens_file` = `editor`/`reveal`/`app`; `o` always opens in the app) |
 | Go to the parent | `backspace` (also `←`/`h`) — cursor lands on the folder you left |
 | Go back / forward | `[` / `]` (also `alt+←`/`alt+→`), like a browser |
 | Jump home / root / iCloud | `~` / `/` / `i` |
@@ -81,7 +92,7 @@ The status bar always shows how many items and bytes are selected.
 
 ## Everyday file operations
 
-**Copy / move:** `c` copies the selection to mytermtui's internal
+**Copy / move:** `c` copies the selection to the app's internal
 clipboard, `x` cuts. Navigate anywhere and `p` pastes. If names collide
 you choose once for the whole batch:
 
@@ -126,10 +137,72 @@ also how you *learn* the shortcuts:
 
 ![The File menu, each item labeled with its key](screenshots/04-file-menu.png)
 
-## Two-panel browsing
+## Explorer navigation (myconsole)
 
-Press `→` (or `l`) on a folder and it opens in a **right panel** taking
-70% of the width, with the listing you came from docked on the left:
+myconsole's tree works like the Windows Explorer sidebar:
+
+- `→` on a collapsed folder **expands** it (+ → −); on an expanded
+  folder it steps to the first child.
+- `←` on an expanded folder **collapses** it; on a nested row it jumps
+  to the parent *row*; at the top level it re-roots the tree at the
+  parent directory. (`backspace` always re-roots at the parent.)
+- The **contents panel** on the right follows the tree selection and is
+  a real, focusable pane: press `tab` to move into it — navigate,
+  select, copy, trash, download there — and `tab` or `←` to return to
+  the tree. Each side remembers its cursor and selection. `enter` on a
+  folder inside the panel navigates within the panel.
+- `ctrl+w` / `F3` hide or show the panel; `<`/`>` resize the split.
+
+## Editing files (myconsole)
+
+Press `enter` on a file and it opens in a **vim-style modal editor** in
+the right panel (this is myconsole's default; `enter_opens_file =
+"reveal"` or `"app"` restores Finder/app behavior, and `o` always opens
+in the default app). The editor is a practical vim *subset*, not full
+vim — no `.vimrc`, plugins, or visual mode.
+
+- **Modes:** normal (default), insert, command-line (`:`), search (`/`).
+  `esc` returns to normal.
+- **Motions:** `h` `j` `k` `l`, `w` `b` `e`, `0` `$` `^`, `gg` `G`, with
+  counts (`5j`, `3w`, `10G`).
+- **Insert:** `i` `a` (before/after cursor), `I` `A` (line start/end),
+  `o` `O` (open line below/above).
+- **Edit:** `x` delete char, `dd`/`dw`/`D` delete, `cc`/`cw`/`C` change,
+  `r` replace char, `yy` yank line, `p`/`P` paste, `u` undo, `ctrl-r`
+  redo.
+- **Search:** `/pattern` then `n`/`N`.
+- **Files:** `:w` write, `:q` quit (refused if unsaved — add `!`),
+  `:wq`/`:x` write & quit, `:q!` discard.
+- **Focus:** `tab` in normal mode parks focus back on the tree with the
+  editor still open (`tab` again returns to it); `:q` closes it.
+
+Cloud-only (`☁`) files are refused — press `d` to download first.
+Binary files and files over 10 MB are refused too.
+
+## The tree and detail panel (myterm)
+
+In **myterm** the listing is a tree: `enter` a folder to expand it in
+place — children indent beneath it with `▸`/`▾` markers — and `enter`
+again to collapse. Expansion state survives sorting, filtering, hidden
+toggles, and background refreshes, and selections can span any mix of
+levels (file operations act on nested rows too).
+
+The **detail panel** on the right follows the cursor: for folders it
+shows contents and metadata (item counts, modified date); for files,
+metadata plus a safe text preview that never downloads evicted files.
+It is on by default (`show_preview = false` to change that), takes the
+right share of `split_ratio` (default 70%), resizes with `<`/`>`, and
+toggles with `F3`.
+
+Since `enter` no longer changes directory in myterm, use `backspace`
+(parent), `:` (go to path), history `[`/`]`, or the dual panel below to
+move around.
+
+## Two-panel browsing (myterm)
+
+In **myterm**, press `→` (or `l`) on a folder and it opens in a
+**right panel** taking 70% of the width, with the listing you came from
+docked on the left:
 
 ![Two panels: parent listing left, opened folder focused on the right](screenshots/08-dual-panel.png)
 
@@ -147,7 +220,7 @@ Press `→` (or `l`) on a folder and it opens in a **right panel** taking
 - A handy pattern: select files in one panel, `tab` to the other, `p`
   to paste them there.
 
-The preview panel (`F3`) is available in single-panel mode.
+The detail/preview panel (`F3`) is available in single-panel mode.
 
 ## Finding things
 
@@ -214,11 +287,12 @@ feature is discoverable without leaving the app.
 
 ## Making it yours
 
-All customization lives in `~/.config/mytermtui/config.toml` (see the
+All customization lives in `~/.config/myterm/config.toml` /
+`~/.config/myconsole/config.toml` (see the
 [README](README.md#configuration--themes) for the full annotated file).
 The quick hits:
 
-- **Rebind keys** — `[keys]` table, action names from `mytermtui-src/internal/ui/keys.go`. Menus, help, and the shortcut bar update to match.
+- **Rebind keys** — `[keys]` table, action names from `<app>-src/internal/ui/keys.go`. Menus, help, and the shortcut bar update to match.
 - **Theme** — `[theme] name = "dracula"` (or `solarized`; `default` follows your terminal palette):
 
   ![The dracula theme](screenshots/07-theme-dracula.png)

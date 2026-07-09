@@ -1,8 +1,9 @@
 # Getting started: capturing the UI screenshots
 
-The README embeds seven PNGs from `screenshots/`. They are not committed
-by default — generate them yourself against a folder whose contents are
-safe to publish, and **review every image before committing**.
+The README embeds PNGs from `screenshots/` (myterm) and
+`screenshots/myconsole/` (myconsole). Generate them against a folder
+whose contents are safe to publish, and **review every image before
+committing**.
 
 ## Option A — the built-in generator (recommended)
 
@@ -10,19 +11,24 @@ Renders the real UI headlessly (no window opens) and rasterizes to PNG.
 Run from the repo root:
 
 ```sh
-go -C mytermtui-src run ./cmd/screenshot -dir "$PWD" -filter md -out ../screenshots/ansi
-python3 scripts/ansi2png.py screenshots/ansi screenshots   # needs Pillow
+# myterm set
+go -C myterm-src run ./cmd/screenshot -dir "$PWD" -filter md -out ../screenshots/ansi
+python3 scripts/ansi2png.py screenshots/ansi screenshots myterm   # needs Pillow
+
+# myconsole set
+go -C myconsole-src run ./cmd/screenshot -dir "$PWD" -filter md -out ../screenshots/ansi
+python3 scripts/ansi2png.py screenshots/ansi screenshots/myconsole myconsole
 
 open screenshots     # ← review before committing
 git add screenshots && git commit
 ```
 
 - `-dir` is the folder shown in the shots. The repo root itself is a safe
-  choice (README.md, SPEC.md, mytermtui-src/, …).
+  choice (README.md, SPEC.md, myterm-src/, …).
 - `-filter` is what gets typed in the filter scenes (02/03/05) — pick a
   string that matches files in `-dir` (`md` matches the markdown files at
   the repo root; `go` matches nothing there since the sources moved into
-  `mytermtui-src/`).
+  `myterm-src/`).
 - The intermediate `screenshots/ansi/*.ansi` files are gitignored but sit
   on disk; delete them if the folder you shot is sensitive.
 
@@ -40,31 +46,31 @@ echo "hello" > notes.txt
 ```
 
 Wait for iCloud to upload (the cloud icon in Finder disappears), evict
-the `.mov` files — easiest with mytermtui itself: run it there, select
+the `.mov` files — easiest with myterm itself: run it there, select
 with `space`, press `e` — then regenerate:
 
 ```sh
 cd ~/repos/offsideai/githubrepos_workspace_active_1/mytermtui
-go -C mytermtui-src run ./cmd/screenshot -dir "$DEMO" -filter demo -out ../screenshots/ansi
-python3 scripts/ansi2png.py screenshots/ansi screenshots
+go -C myterm-src run ./cmd/screenshot -dir "$DEMO" -filter demo -out ../screenshots/ansi
+python3 scripts/ansi2png.py screenshots/ansi screenshots myterm
 ```
 
 ## Option B — real screenshots by hand
 
 1. Resize the terminal to roughly 120×35.
-2. Run `mytermtui-src/mytermtui <safe folder>`.
+2. Run `myterm-src/myterm <safe folder>` (or the myconsole one).
 3. Set up each scene, then press `⌘⇧4`, then `Space`, then click the
    window (saves a PNG to the Desktop):
 
 | File name | Scene keys |
 |---|---|
-| `01-browser.png` | navigate with `j`, select two files with `space` |
+| `01-browser.png` | myterm: `enter` expands the first folder, `j` `j` · myconsole: navigate + `space`-select |
 | `02-filter.png` | `f`, type a query, `enter` |
 | `03-preview.png` | `F3` with the cursor on an evicted file |
 | `04-file-menu.png` | `m` |
 | `05-get-info.png` | `I` on a file |
 | `06-help.png` | `?` |
-| `07-theme-dracula.png` | set `[theme] name = "dracula"` in `~/.config/mytermtui/config.toml`, relaunch |
+| `07-theme-dracula.png` | set `[theme] name = "dracula"` in `~/.config/myterm/config.toml`, relaunch |
 | `08-dual-panel.png` | `→` on a folder, then `j` |
 
 4. Rename the captures exactly as above and move them into

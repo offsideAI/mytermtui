@@ -1,4 +1,5 @@
-mytermtui
+myterm
+myconsole
 dist/
 .DS_Store
 *.log

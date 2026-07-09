@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Render true-color ANSI frames (from cmd/screenshot) to PNG screenshots.
 
-Usage: python3 scripts/ansi2png.py <ansi-dir> <png-dir>
+Usage: python3 scripts/ansi2png.py <ansi-dir> <png-dir> [app-name]
 
 Only needs Pillow. Draws each frame in Menlo (with Apple Symbols as a
 glyph fallback) on a dark background, wrapped in a macOS-style window.
@@ -167,9 +167,9 @@ def render(path, out_path, fonts):
                      fill=color)
     title = os.path.splitext(os.path.basename(out_path))[0].split("-", 1)[-1]
     tf = fonts.regular
-    draw.text((ox + img_w / 2 - tf.getlength("mytermtui — " + title) / 2,
+    draw.text((ox + img_w / 2 - tf.getlength(APP + " — " + title) / 2,
                oy + TITLEBAR // 2 - fonts.cell_h // 2),
-              "mytermtui — " + title, font=tf, fill=(147, 153, 178))
+              APP + " — " + title, font=tf, fill=(147, 153, 178))
 
     x0, y0 = ox + PAD, oy + TITLEBAR + PAD
 
@@ -207,9 +207,11 @@ def render(path, out_path, fonts):
 
 
 def main():
-    if len(sys.argv) != 3:
+    if len(sys.argv) not in (3, 4):
         sys.exit(__doc__)
     src, dst = sys.argv[1], sys.argv[2]
+    global APP
+    APP = sys.argv[3] if len(sys.argv) == 4 else "myterm"
     os.makedirs(dst, exist_ok=True)
     fonts = Fonts()
     for name in sorted(os.listdir(src)):

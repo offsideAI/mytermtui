@@ -1,5 +1,11 @@
 # mytermtui — Specification
 
+> **Note (post-v1):** this repo now ships two apps built from this
+> design — **myconsole** (`myconsole-src/`, the navigator described
+> here) and **myterm** (`myterm-src/`, which adds Windows-Explorer-style
+> in-place tree expansion and a default-on detail panel). The spec below
+> is the original design document, kept for reference.
+
 A keyboard-driven, colored terminal UI for browsing the filesystem with Finder-level file operations, plus first-class iCloud Drive awareness: it shows which files are evicted (cloud-only), lets the user mark files/folders for download, runs a download queue with progress, and can evict local copies back to the cloud.
 
 - **Language / stack:** Go + Bubble Tea (single static-ish binary; one small cgo bridge to Apple frameworks)

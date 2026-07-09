@@ -1,20 +1,23 @@
-# MyTermTUI
+# MyTerm & MyConsole
 
-**A keyboard-driven terminal file browser for macOS with first-class iCloud Drive support.**
+**Two keyboard-driven terminal file browsers for macOS with first-class iCloud Drive support**, built from one shared foundation (Go + [Bubble Tea](https://github.com/charmbracelet/bubbletea), single binaries):
 
-`mytermtui` shows which files are **evicted** (cloud-only ☁), lets you **mark files and folders for download** with a live progress queue, and can **evict** local copies back to the cloud — the things Finder does with a right-click, minus the mouse. Around that it is a full file manager: copy, move, trash, rename, preview, search, menus — all from the keyboard.
+- **myterm** (`myterm-src/`) — *explorer style*: folders expand in place as a tree (`enter` toggles `▸`/`▾`, Windows-Explorer/nvim-tree style) with a detail panel on the right showing the selected item's contents and metadata.
+- **myconsole** (`myconsole-src/`) — *Windows Explorer style*: `→` expands a folder in place (+ → −), `←` collapses, and a **focusable contents panel** on the right follows the selection (`tab` moves focus into it).
 
-Built with Go + [Bubble Tea](https://github.com/charmbracelet/bubbletea). Ships as a single binary.
+Both show which files are **evicted** (cloud-only ☁), **download** marked files/folders with a live progress queue, **evict** local copies to reclaim disk, and offer Finder-parity file management — the things Finder does with a right-click, minus the mouse.
 
-**Docs:** this README covers installation, concepts, and reference · [USAGE.md](USAGE.md) is the hands-on user manual · [DEPLOY.md](DEPLOY.md) covers rebuild/install · [SPEC.md](SPEC.md) is the original design spec · [GETSTARTED.md](GETSTARTED.md) explains regenerating the screenshots.
+![myterm: tree expanded in place, detail panel showing the selected folder](screenshots/01-browser.png)
 
-![mytermtui browsing an iCloud folder: two selected videos, cloud-only glyphs, download hints](screenshots/01-browser.png)
+*myterm above; myconsole below — same folder, navigator style:*
+
+![myconsole: classic single-listing navigator](screenshots/myconsole/01-browser.png)
 
 ---
 
 ## Contents
 
-- [Features](#features)
+- [Choosing an app](#choosing-an-app)
 - [Installation](#installation)
 - [Quick start](#quick-start)
 - [The interface](#the-interface)
@@ -27,21 +30,24 @@ Built with Go + [Bubble Tea](https://github.com/charmbracelet/bubbletea). Ships 
 - [Development](#development)
 - [Troubleshooting](#troubleshooting)
 
+**Docs:** this README is the shared reference · [USAGE.md](USAGE.md) is the hands-on manual · [DEPLOY.md](DEPLOY.md) covers rebuild/install · [SPEC.md](SPEC.md) is the original design spec · [GETSTARTED.md](GETSTARTED.md) explains regenerating the screenshots.
+
 ---
 
-## Features
+## Choosing an app
 
-| | |
-|---|---|
-| **iCloud status at a glance** | `✓` local · `☁` cloud-only · `◌` queued · `⇣` downloading, per file, from a single `lstat` |
-| **Download queue** | Mark any files/folders with `d`; concurrent downloads with live progress, pause, reorder, cancel; persists across restarts |
-| **Evict** | Free disk space with `e` — the file stays in iCloud and returns to `☁` |
-| **No accidental downloads** | Previews and browsing can never materialize an evicted file; operations that would (copy, compress) ask first |
-| **Finder-parity file ops** | Copy/cut/paste with conflict dialog, rename, duplicate, native recoverable Trash, new file/folder, compress, Quick Look, Get Info, reveal in Finder, undo |
-| **Fast navigation** | Vim keys *and* arrow keys, history back/forward, go-to-path with tab completion, per-directory filter, recursive fuzzy find |
-| **Dual panels** | `→` opens a folder in a right panel (resizable split); `tab` switches focus, each panel keeping its own cursor and selection |
-| **Discoverable UI** | Pull-down menus, nano-style shortcut bar, searchable help overlay — no memorization required |
-| **Configurable** | TOML config: rebind every key, three color themes, tuning knobs |
+Both are trees now — the difference is idiom:
+
+| | **myterm** (nvim-tree idiom) | **myconsole** (Windows Explorer idiom) |
+|---|---|---|
+| Expand / collapse | `enter` toggles | `→` expands, `←` collapses (`enter` toggles too) |
+| `→` on an expanded folder | Opens it as an independent dual panel | Steps to its first child |
+| `←` on a nested row | Parent directory | Jumps to the parent *row* in the tree |
+| Right side of the screen | **Passive** detail panel following the cursor | **Focusable** contents panel: `tab` moves focus in, navigate/select/operate there, `tab` (or `←`) back |
+| Dual independent panels | Yes (`→`, `tab`, `ctrl+w`) | No — replaced by the contents panel (`ctrl+w`/`F3` toggle its visibility) |
+| Everything else | Identical: iCloud queue, file ops, menus, search, themes, config format | Identical |
+
+They are separate binaries with separate config (`~/.config/myterm/`, `~/.config/myconsole/`) and state, so you can run both side by side.
 
 ## Installation
 
@@ -49,75 +55,79 @@ Requires **Go 1.22+** and the **Xcode Command Line Tools** (the iCloud bridge us
 
 ```sh
 git clone git@github.com:offsideAI/mytermtui.git
-cd mytermtui/mytermtui-src
-go build -o mytermtui .
+cd mytermtui
+
+go -C myterm-src    build -o myterm .
+go -C myconsole-src build -o myconsole .
+
+install myterm-src/myterm myconsole-src/myconsole /opt/homebrew/bin/   # or sudo … /usr/local/bin/
 ```
 
-Optionally move the binary onto your `PATH`:
+> **Full Disk Access required for iCloud browsing.** `~/Library/Mobile Documents` is protected; grant your terminal app Full Disk Access in *System Settings → Privacy & Security*. Without it the status bar shows a permission hint when you enter iCloud paths.
 
-```sh
-install mytermtui /usr/local/bin/
-```
-
-> **Full Disk Access required for iCloud browsing.** `~/Library/Mobile Documents` is protected; grant your terminal app Full Disk Access in *System Settings → Privacy & Security → Full Disk Access*. Without it the status bar shows a permission hint when you enter iCloud paths.
-
-Non-macOS builds compile and run as a plain file browser — iCloud actions report "requires macOS".
+Non-macOS builds compile and run as plain file browsers — iCloud actions report "requires macOS".
 
 ## Quick start
 
 ```sh
-./mytermtui                  # start in ~ (configurable)
-./mytermtui ~/some/dir       # start elsewhere
-./mytermtui --version
+myterm                      # or myconsole — start in ~ (configurable)
+myterm ~/some/dir
+myterm --version
 ```
 
-A 60-second tour:
+A 60-second tour (either app):
 
-1. Press `i` to jump to the iCloud Drive root, navigate with arrows or `hjkl`, `enter` to open a folder.
-2. Files marked `☁` exist only in the cloud. Put the cursor on one and press **`d`** — watch `◌` → `⇣` with a progress bar → `✓`.
-3. Press **`e`** on a `✓` file to evict it and reclaim the disk space.
-4. Press `?` for the full key reference, `m` for menus, `ctrl+q` to quit.
+1. Press `i` to jump to the iCloud Drive root; navigate with arrows or `hjkl`.
+2. In **myterm**, `enter` a folder to expand it in place and watch the right panel follow your cursor. In **myconsole**, `enter` steps into the folder (`backspace` back up).
+3. Files marked `☁` exist only in the cloud. Press **`d`** on one — watch `◌` → `⇣` with a progress bar → `✓`. Press **`e`** on a `✓` file to evict it and reclaim the space.
+4. `?` for the full key reference, `m` for menus, `ctrl+q` to quit.
 
 ## The interface
 
 ```
 ┌ menu bar ──────────────────────────────────────────────┐
 │ breadcrumb (current path, ☁ when inside iCloud)        │
-│ file list: selection · name · size · modified · iCloud │
-│ …                                        preview panel │
+│ file list / tree · size · modified · iCloud status     │
+│ …                                 detail/preview panel │
 │ download bar (only while the queue is active)          │
 │ boxed shortcut bar (nano-style, context-aware)         │
 │ status bar: selection / messages · sort · hints        │
 └─────────────────────────────────────────────────────────┘
 ```
 
-- **Menu bar** — press `m` (or `F10`): File, Edit, View, Go, iCloud, Help. Navigate with arrows, run with `enter`. Every item shows its shortcut, so the menus double as a cheat sheet.
+- **Menu bar** — press `m` (or `F10`): File, Edit, View, Go, iCloud, Help. Every item shows its shortcut, so the menus double as a cheat sheet.
 
   ![File menu open, showing shortcuts beside each item](screenshots/04-file-menu.png)
 
-- **Shortcut bar** — the boxed, two-row hint bar above the status line. It is context-aware (switches while a menu, dialog, or the filter is active) and always shows your *live* bindings, so config remaps stay truthful. Toggle with `H`.
+- **The tree (both apps)** — folders expand in place (`▾`/`▸`), children indented, state surviving sorting, filtering, and background refreshes. Toggle with `enter` in both; in myconsole `→`/`←` are the Explorer-style expand/collapse keys (`←` also jumps from a nested row to its parent row, and re-roots at the parent directory from the top level).
 
-- **Preview panel** — `F3` (or `P`) splits the view. Text files show their head, folders show their contents, and evicted files show their cloud status *without downloading anything* (see below).
+- **The right panel** — sized by `split_ratio` (default 30/70), resized with `<`/`>`, toggled with `F3`. In **myterm** it is a passive detail view (folder contents + metadata, or file metadata + safe text preview). In **myconsole** it is a *focusable* contents panel: `tab` moves focus into it, everything works there (navigate, select, copy, trash, download), and `tab` or `←` returns to the tree — each side remembering its cursor and selection.
 
-- **Status bar** — selection count and size, item count, transient results of operations, sort order.
+  ![myconsole: tab focuses the contents panel on the right](screenshots/myconsole/08-contents-focus.png)
 
-- **Dual panels** — press `→` (or `l`) on a folder to open it in a right panel while the current listing docks left; `tab` switches focus (each panel keeps its own cursor, selection, filter, and history), `←` in the right panel steps back to the left one, `<`/`>` resize the split, `ctrl+w` closes it. The default split is 30/70 (`split_ratio` in config).
+- **Embedded editor (myconsole)** — `enter` on a file opens it in a vim-style modal editor in the right panel: normal/insert/command/search modes, `hjkl`/`w`/`b`/`e`/`0`/`$`/`gg`/`G` motions with counts, `i`/`a`/`o`/`I`/`A`, `x`/`dd`/`dw`/`cc`/`cw`/`C`/`D`/`r`, `yy`/`p`, `u` + `ctrl-r` undo, `/`+`n`/`N` search, and `:w` `:q` `:wq` `:q!`. `tab` parks focus back on the tree (editor stays open); `:q` closes it. Evicted, binary, and >10 MB files are refused. A vim *subset*, not full vim — no `.vimrc` or plugins. Set `enter_opens_file = "reveal"` or `"app"` to keep the old behavior.
 
-  ![Dual panels: repo root docked left, mytermtui-src open in the focused right panel](screenshots/08-dual-panel.png)
+  ![myconsole: editing a file in the embedded vim-style editor](screenshots/myconsole/09-editor.png)
+
+- **Dual panels (myterm only)** — `→` on a folder opens it as an independent right panel; `tab` switches focus, `ctrl+w` closes the split.
+
+  ![myterm dual panels: parent listing docked left, opened folder focused right](screenshots/08-dual-panel.png)
+
+- **Shortcut bar** — nano-style boxed cheat sheet above the status line; context-aware and always showing your live bindings. Toggle with `H`.
+
+- **Status bar** — selection count and size, item count, operation results, sort order.
 
 ## Working with iCloud Drive
 
-### How macOS represents evicted files (and why this tool exists)
+*(Identical in both apps.)*
 
-On modern macOS (FileProvider-based iCloud Drive), an evicted file is a *dataless* file: it keeps its name and full logical size, but occupies **zero blocks** on disk and carries the `SF_DATALESS` stat flag. There are no `.icloud` placeholder files anymore, and the old `brctl download` / `brctl evict` commands were removed. `mytermtui` therefore:
+### How macOS represents evicted files (and why these tools exist)
 
-- detects evicted files with one `lstat` (`st_flags & SF_DATALESS`);
-- starts downloads with `NSFileManager startDownloadingUbiquitousItemAtURL:` and evicts with `evictUbiquitousItemAtURL:` (a small cgo bridge, `mytermtui-src/internal/icloud/bridge_darwin.go`);
-- reads live percentages by polling Apple's entitled `brctl status`
-  (fileproviderd stages downloads out of view — blocks appear only at
-  completion — and hides its progress from non-entitled processes, so
-  `brctl` is the one accessible source; updates can lag ~20s while the
-  daemon is busy).
+On modern macOS (FileProvider-based iCloud Drive), an evicted file is a *dataless* file: it keeps its name and full logical size, but occupies **zero blocks** on disk and carries the `SF_DATALESS` stat flag. There are no `.icloud` placeholder files anymore, and the old `brctl download` / `brctl evict` commands were removed. So the apps:
+
+- detect evicted files with one `lstat` (`st_flags & SF_DATALESS`);
+- start downloads with `NSFileManager startDownloadingUbiquitousItemAtURL:` and evict with `evictUbiquitousItemAtURL:` (a small cgo bridge);
+- read live percentages by polling Apple's entitled `brctl status` (fileproviderd stages downloads out of view — blocks appear only at completion — and hides its progress from non-entitled processes, so `brctl` is the one accessible source; updates can lag ~20s while the daemon is busy).
 
 ### The status column
 
@@ -135,7 +145,7 @@ On modern macOS (FileProvider-based iCloud Drive), an evicted file is a *datales
 
 Select files or folders (folders are expanded recursively — listings only, nothing is read) and press **`d`**. The queue starts up to `max_concurrent_downloads` materializations at once and shows an aggregate progress bar. Press **`Q`** for the queue manager: `c` cancel item (partial downloads are evicted again), `C` cancel all, `p` pause, `K`/`J` reorder, `x` clear finished.
 
-The queue is persisted to `~/.local/state/mytermtui/queue.json` — quit mid-download and pending marks resume on the next launch (the actual transfer continues in `fileproviderd` either way).
+The queue persists (`~/.local/state/<app>/queue.json`) — quit mid-download and pending marks resume on the next launch (the transfer itself continues in `fileproviderd` either way).
 
 ### Evicting
 
@@ -143,152 +153,143 @@ Press **`e`** on local iCloud items, confirm, and the local bytes are released. 
 
 ### The no-accidental-download guarantee
 
-Reading a dataless file's *contents* triggers a download — so a naive file manager can pull gigabytes just by previewing. `mytermtui` guards every content-reading path:
+Reading a dataless file's *contents* triggers a download — so a naive file manager can pull gigabytes just by previewing. Every content-reading path is guarded:
 
-- The **preview panel** reads files on a thread with `IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES = OFF`, so an evicted file can never materialize from browsing. It shows the cloud status instead:
+- The **detail/preview panel** reads files on a thread with `IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES = OFF`, so an evicted file can never materialize from browsing:
 
-  ![Preview of an evicted 2.9 GB video: cloud-only, 0 bytes local, press d to download](screenshots/03-preview.png)
+  ![Preview of an evicted file: cloud-only, 0 bytes local, press d to download](screenshots/myconsole/03-preview.png)
 
 - **Quick Look** and **Open With** refuse evicted files and point you to `d`.
-- **Copy/paste** and **Compress** count the cloud-only bytes involved (folders scanned via listings) and ask for confirmation before proceeding.
+- **Copy/paste** and **Compress** count the cloud-only bytes involved and ask for confirmation before proceeding.
 
 ### Folder summary
 
-Press **`S`** to tally a folder: how many files are local vs cloud-only and how many bytes each way — useful before a bulk download or evict.
+Press **`S`** to tally a folder: local vs cloud-only file counts and byte totals.
 
 ## File management
 
-All operations act on the **selection** (space to toggle, `v` for a range, `a` all) or, with nothing selected, the cursor item.
+*(Identical in both apps; in myterm, operations also work on rows inside expanded subtrees.)*
 
-- **Copy / Cut / Paste** — `c` / `x` / `p` (app-internal clipboard). Name conflicts open a dialog: *keep both* (Finder-style `name 2.ext`), *replace*, or *skip*. Replace moves the old file to the **Trash**, not oblivion. On APFS, copies use `clonefile(2)` — instant and copy-on-write — falling back to a streaming copy with progress that preserves permissions, times, and xattrs.
-- **Trash** — `D` uses macOS's real Trash (`trashItemAtURL`), so items are recoverable in Finder, and **undo** (`u`) puts them back.
-- **Undo** — `u` reverses the last operation: rename, move, copy, trash, duplicate, compress, new file/folder (single level).
-- **Get Info** — `I`:
+All operations act on the **selection** (`space` toggle, `v` range, `a` all) or, with nothing selected, the cursor item.
 
-  ![Get Info on an evicted video: 2.91 GB logical, 0 bytes on disk, cloud-only](screenshots/05-get-info.png)
+- **Copy / Cut / Paste** — `c` / `x` / `p`. Name conflicts offer *keep both* / *replace* / *skip*; replace moves the old file to the **Trash** (recoverable). APFS copies are instant clones; cross-volume copies stream with progress and preserve permissions, times, xattrs.
+- **Trash** — `D`, into the real macOS Trash with Finder "Put Back"; **undo** (`u`) restores.
+- **Create / rename / duplicate** — `n` folder, `N` file, `r` rename, `ctrl+d` duplicate.
+- **Compress** — `Z` zips the selection (`ditto`, Finder-compatible).
+- **Inspect** — `I` Get Info (kind, logical vs on-disk size, permissions, iCloud state):
 
-- **More** — duplicate (`ctrl+d`), new folder/file (`n`/`N`), compress to zip (`Z`, uses `ditto` to preserve resource forks), Quick Look (`q`), open with a specific app (`O`), reveal in Finder (`R`), open Terminal here (`T`), copy path to clipboard (`.`).
+  ![Get Info on an evicted file](screenshots/05-get-info.png)
 
-Filenames are handled as opaque bytes throughout — names with exotic Unicode (macOS screen recordings contain a narrow no-break space before "PM") sort, render, and operate correctly.
+- **Hand off to macOS** — `enter` on a file reveals it in Finder (`enter_opens_file = "app"` opens it instead); `o` always opens in the default app; `q` Quick Look; `O` open with a named app; `R` reveal; `T` Terminal here; `.` copy path.
 
 ## Finding files
 
-- **Filter** (`f`) — type to narrow the current directory live; `enter` keeps the filter, `esc` clears it.
-- **Fuzzy find** (`F`) — recursive, subsequence-matched search under the current directory; `enter` jumps to the result.
+- **Filter** (`f`) — narrows the listing live as you type; in myterm the filter applies at every expanded level. `enter` keeps it, `esc` clears.
 
-![Directory filtered live as you type](screenshots/02-filter.png)
+  ![Filter narrowing the listing](screenshots/02-filter.png)
 
-- **Go to path** (`:`) — type any path with tab completion; `~` expands.
-- **History** — `[` / `]` (or `alt+←`/`alt+→`) move back and forward; `backspace` goes to the parent with the cursor on the folder you came from.
+- **Fuzzy find** (`F`) — recursive subsequence search under the current root; `enter` jumps to the hit.
+- **Go to path** (`:`) — with tab completion; `~` expands.
+- **Sort** (`s`), **hidden files** (`z`), **history** `[` / `]`.
 
 ## Keyboard reference
 
-Press `?` in the app for the always-current version of this table (it reflects your remaps):
+Press `?` in either app for the live version (it reflects your remaps):
 
-![Help overlay listing every binding by section](screenshots/06-help.png)
-
-Defaults:
+![Help overlay](screenshots/06-help.png)
 
 | Group | Keys |
 |---|---|
-| **Move** | `↑↓`/`kj` cursor · `enter` open dir / reveal file in Finder · `←`/`h`/`bksp` parent · `g`/`G` top/bottom · `pgup`/`pgdn` page |
-| **Panels** | `→`/`l` open folder in right panel · `tab` switch focus · `←` (right panel) back to left · `<`/`>` resize · `ctrl+w` close |
+| **Move** | `↑↓`/`kj` cursor · `enter` expand/collapse folder, reveal file · `bksp` parent directory · `g`/`G` top/bottom · `pgup`/`pgdn` page |
+| **Tree** | myconsole: `→` expand / first child · `←` collapse / parent row / parent dir · myterm: `enter` toggles, `←`/`h` parent |
+| **Panels** | `tab` switch focus · `<`/`>` resize · `ctrl+w`/`F3` toggle panel · myterm only: `→`/`l` open folder as dual panel |
 | **Go** | `[` `]` history · `~` home · `/` root · `i` iCloud Drive · `:` go to path |
-| **View** | `z` hidden files · `s` sort · `f` filter · `F` fuzzy find · `F3`/`P` preview · `H` shortcut bar · `ctrl+r` refresh |
+| **View** | `z` hidden · `s` sort · `f` filter · `F` fuzzy find · `H` shortcut bar · `ctrl+r` refresh |
 | **Select** | `space` toggle · `v` range · `a` all · `A`/`esc` clear |
-| **Files** | `c` copy · `x` cut · `p` paste · `r`/`F2` rename · `D`/`F8` trash · `ctrl+d` duplicate · `n` folder · `N` file · `u` undo |
-| **Open/Info** | `o` open in default app · `O` open with · `q` Quick Look · `I` get info · `Z` compress · `R` reveal · `T` terminal · `.` copy path |
-| **iCloud** | `d` download · `e` evict · `Q` queue manager · `S` folder summary |
+| **Files** | `o` open in app · `c` copy · `x` cut · `p` paste · `r` rename · `D` trash · `ctrl+d` duplicate · `n`/`N` new · `u` undo · `O` open with · `q` Quick Look · `I` info · `Z` zip · `R` reveal · `T` terminal · `.` copy path |
+| **iCloud** | `d` download · `e` evict · `Q` queue · `S` summary |
 | **App** | `m`/`F10` menus · `?`/`F1` help · `ctrl+q` quit |
 
 ## Configuration & themes
 
-Everything is optional. Create `~/.config/mytermtui/config.toml`:
+Each app reads its own file — `~/.config/myterm/config.toml` or `~/.config/myconsole/config.toml`:
 
 ```toml
 [general]
-start_dir     = "~"        # initial directory
-show_hidden   = false      # dotfiles + Finder-hidden
-confirm_trash = true       # ask before moving to Trash
-dirs_first    = true       # folders sort above files
-show_hints    = true       # nano-style shortcut bar
+start_dir     = "~"
+show_hidden   = false
+confirm_trash = true
+dirs_first    = true
+show_hints    = true         # nano-style shortcut bar
+show_preview  = true         # right panel on launch (detail/contents)
+split_ratio   = 0.30         # left share: panel split & myterm's list/detail divide
+enter_opens_file = "editor"  # enter on a file: "editor" | "reveal" in Finder | "app"
 
 [icloud]
 max_concurrent_downloads = 3
-poll_interval_ms         = 500   # progress poll cadence
+poll_interval_ms         = 500
 
 [theme]
-name = "default"           # default | dracula | solarized
+name = "default"             # default | dracula | solarized
 
-[keys]                     # action = [keys…] — see mytermtui-src/internal/ui/keys.go
+[keys]                       # action = [keys…] — see <app>-src/internal/ui/keys.go
 download = ["d"]
 quit     = ["ctrl+q"]
 ```
 
-`default` leans on your terminal's own palette; `dracula` and `solarized` bring their own colors:
-
 ![The dracula theme](screenshots/07-theme-dracula.png)
 
-Every action in [`mytermtui-src/internal/ui/keys.go`](mytermtui-src/internal/ui/keys.go) can be rebound by its name (`download`, `toggle_hidden`, `fuzzy_find`, …). The shortcut bar, menus, and help overlay all display whatever you bind.
+*(Migrating from the single-app era: copy `~/.config/mytermtui/config.toml` to the new per-app paths.)*
 
 ## Architecture
 
+Two sibling Go modules sharing one lineage — `myterm-src/` adds the tree/detail layer on top of the common core:
+
 ```
-mytermtui-src/            the Go module
-  main.go                 flags, config, wiring, tea.NewProgram
-  internal/ui/            Bubble Tea Elm-architecture model
-    model.go              state, messages, update loop (never touches disk)
-    actions.go            every user action; ops run in commands
-    render.go, hints.go   views: list, bars, menus, shortcut box
-    modals.go, menu.go    dialogs and pull-down menus
-    keys.go, theme.go     bindings and styling
-  internal/fsx/           listing, sorting, fuzzy find, copy/move/zip engine
-  internal/icloud/        dataless detection, cgo Foundation bridge,
-                          download queue (poll-driven, persisted)
-  internal/config/        TOML config
-  cmd/screenshot/         headless frame dumper for the docs
-scripts/ansi2png.py       ANSI frame → PNG renderer
-screenshots/              generated UI screenshots (see Development)
+myterm-src/ · myconsole-src/    each a full Go module
+  main.go                       flags, config, wiring
+  internal/ui/                  Bubble Tea Elm-architecture model
+    model.go                    state, messages, update loop (never touches disk)
+    panes.go                    dual-panel state (park/restore/swap)
+    actions.go, render.go, …    actions, views, menus, dialogs, keys, theming
+  internal/fsx/                 listing, sorting, fuzzy find, copy/move/zip engine
+  internal/icloud/              dataless detection, cgo Foundation bridge,
+                                brctl progress parser, download queue (persisted)
+  internal/config/              TOML config
+  cmd/screenshot/               headless frame dumper for the docs
+scripts/ansi2png.py             shared ANSI frame → PNG renderer
+screenshots/ (+ myconsole/)     generated UI screenshots per app
 ```
 
-Design notes:
-
-- The update loop is pure state; directory reads, file operations, downloads, and previews run as Bubble Tea commands in goroutines and come back as messages.
-- The download queue has **no internal goroutine**: the UI ticks it at `poll_interval_ms`, which makes it deterministic and easily testable (the tests drive it with a fake bridge and fake clock).
-- Only one mutating filesystem operation runs at a time (enforced centrally in the action dispatcher), which is what makes single-level undo sound.
+Design notes: the update loop is pure state (all I/O in commands); the download queue is tick-driven and testable with a fake bridge; one mutating filesystem operation runs at a time, which keeps single-level undo sound; in myterm the visible tree is flattened from a root listing plus cached child listings on every rebuild.
 
 ## Development
 
 ```sh
-cd mytermtui-src
-go test ./...     # unit + UI tests (queue uses a fake bridge; no iCloud needed)
-go vet ./...
-gofmt -l .
+cd myterm-src      # or myconsole-src
+go test ./... && go vet ./...
 ```
 
-Regenerate the screenshots after UI changes (they are rendered from the real model, headlessly — no terminal capture):
+Regenerate screenshots (see [GETSTARTED.md](GETSTARTED.md) for details):
 
 ```sh
-# from the repo root:
-go -C mytermtui-src run ./cmd/screenshot -dir "<folder to show>" -out ../screenshots/ansi
-python3 scripts/ansi2png.py screenshots/ansi screenshots   # needs Pillow
+go -C myterm-src    run ./cmd/screenshot -dir "<folder>" -filter md -out ../screenshots/ansi
+python3 scripts/ansi2png.py screenshots/ansi screenshots myterm
+
+go -C myconsole-src run ./cmd/screenshot -dir "<folder>" -filter md -out ../screenshots/ansi
+python3 scripts/ansi2png.py screenshots/ansi screenshots/myconsole myconsole
 ```
 
-Manual iCloud acceptance checklist (needs a signed-in iCloud account):
-
-1. Open an iCloud folder with evicted files → rows show `☁`.
-2. Preview (`F3`) an evicted file → shows "cloud-only", does **not** download it.
-3. `d` on a `☁` file → `◌` → `⇣` with progress → `✓`.
-4. `e` on the `✓` file → confirm → back to `☁` (verify with `stat -f "blocks=%b"`).
-5. Quit mid-download and relaunch → queue resumes from persisted state.
+Manual iCloud acceptance checklist (needs a signed-in account): evicted rows show `☁` → preview one (no download happens) → `d` downloads with `◌ → ⇣ → ✓` and a live percentage → `e` evicts back to `☁` → quit mid-download and relaunch resumes the queue.
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
-| "operation not permitted" browsing `~/Library/Mobile Documents` | Grant your terminal Full Disk Access (System Settings → Privacy & Security) and restart the terminal |
-| `F10` opens Mission Control instead of the menus | Hold `fn`, or just press `m`; or enable "Use F1, F2, etc. as standard function keys" |
-| Downloads sit at `stalled` | Network/quota issue on Apple's side — check iCloud status in System Settings; the item retries as soon as bytes move |
-| A download finished but the glyph is still `☁` | The list refreshes on the next tick; `ctrl+r` forces it |
-| Colors look flat | Use a true-color terminal (`echo $COLORTERM` → `truecolor`); the `default` theme also adapts to 256-color terminals |
-| Quit during a download — is it lost? | No: `fileproviderd` keeps transferring; relaunching resumes progress tracking from the persisted queue |
+| "operation not permitted" under `~/Library/Mobile Documents` | Grant your terminal Full Disk Access, restart the terminal |
+| `F10` opens Mission Control | Hold `fn`, or use `m` |
+| Download percentage takes ~20s to move | Normal: `brctl` answers slowly while fileproviderd is busy; the bar never regresses |
+| Downloads sit at `stalled` | Network/quota issue on Apple's side; retries as soon as bytes move |
+| Glyph still `☁` after a download | Refreshes on the next tick; `ctrl+r` forces it |
+| Colors look flat | Use a true-color terminal; the `default` theme adapts to 256-color |
+| Old `~/.config/mytermtui` settings ignored | Copy them to `~/.config/myterm/` and/or `~/.config/myconsole/` |
