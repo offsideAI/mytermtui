@@ -39,6 +39,14 @@ func (m *Model) hintRows() [][]hint {
 			{key: "esc", label: "clear"},
 		}}
 	case m.focusRight:
+		if m.tab == tabJobs {
+			return [][]hint{{
+				{key: "↑/↓", label: "select"},
+				{key: "c", label: "cancel"},
+				{key: "x", label: "clear finished"},
+				{key: "tab", label: "tree"},
+			}}
+		}
 		if m.tab == tabSQL {
 			s := m.currentSQLSession(false)
 			if s != nil && s.editorFocused {
@@ -98,11 +106,11 @@ func (m *Model) hintRows() [][]hint {
 			{act: ActFilter, label: "filter"},
 		},
 		{
-			{act: ActNewConn, label: "new conn"},
-			{act: ActEditConn, label: "edit"},
-			{act: ActDeleteConn, label: "delete"},
+			{act: ActBackup, label: "backup"},
+			{act: ActCommands, label: "commands"},
+			{act: ActMaintenance, label: "maint"},
+			{act: ActJobs, label: "jobs"},
 			{act: ActSwapPane, label: "panel"},
-			{act: ActRefresh, label: "refresh"},
 			{act: ActQuit, label: "quit"},
 		},
 	}

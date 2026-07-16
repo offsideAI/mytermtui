@@ -31,10 +31,18 @@ func TestWorkspaceFocusAndTabs(t *testing.T) {
 		t.Fatalf("] should switch to SQL, tab=%d", m.tab)
 	}
 	press(t, m, "]")
+	if m.tab != tabJobs {
+		t.Fatalf("] should switch to Jobs, tab=%d", m.tab)
+	}
+	press(t, m, "]")
 	if m.tab != tabInfo {
 		t.Fatalf("] should wrap back to Info, tab=%d", m.tab)
 	}
-	press(t, m, "[", "[") // back to Data via SQL
+	press(t, m, "[") // wrap back to Jobs
+	if m.tab != tabJobs {
+		t.Fatalf("[ should wrap to Jobs, tab=%d", m.tab)
+	}
+	press(t, m, "[", "[") // SQL, Data
 	if m.tab != tabData {
 		t.Fatalf("[ should step back to Data, tab=%d", m.tab)
 	}

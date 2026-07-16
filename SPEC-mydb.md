@@ -19,7 +19,7 @@ The design rests on how the two v1 engines really behave; future engines slot in
 3. **SQLite queries cancel via interrupt.** `modernc.org/sqlite` honors `context.Context` cancellation (sqlite3_interrupt semantics), so a runaway query is stoppable from the UI.
 4. **PostgreSQL is a server with real structure.** One server → many databases → many schemas → tables/views/indexes, plus cluster-wide roles. Introspection is `pg_catalog` (`pg_class`, `pg_namespace`, `pg_attribute`, `pg_index`, `pg_roles`, `pg_database`); `pg_table_size`/`pg_total_relation_size` give sizes and `pg_class.reltuples` gives free row estimates. A connection is bound to one database — browsing a different database on the same server needs a second connection under the hood.
 5. **PostgreSQL supports true server-side query cancellation** (a cancel request on a separate channel). `jackc/pgx` exposes this through context cancellation; `database/sql` obscures it along with multi-statement scripts and rich error positions (`pgconn.PgError` carries position/hint/detail for inline display). **Drivers therefore use their native libraries directly, not `database/sql`** — the shared abstraction is mydb's own interface (§4.2).
-6. **Faithful Postgres backups require `pg_dump`.** Custom-format archives, large objects, ACLs, and version-skew handling are not reproducible with plain queries. But `pg_dump` may be missing from PATH — so mydb wraps `pg_dump`/`pg_restore` when available and falls back to a **built-in plain-SQL dumper** (schema + data via queries) with an explicit fidelity warning. `pg_dump` emits no percentage; progress is proxied by bytes written plus its `-v` phase lines on stderr.
+6. **Faithful Postgres backups require `pg_dump`.** Custom-format archives, large objects, ACLs, and version-skew handling are not reproducible with plain queries. But `pg_dump` may be missing from PATH — so mydb wraps `pg_dump`/`pg_restore` when available and falls back to a **built-in plain-SQL dumper** (data-only INSERTs via queries — no schema/large objects) with an explicit fidelity warning. `pg_dump` emits no percentage; progress is proxied by bytes written plus its `-v` phase lines on stderr.
 7. **Paging a huge table needs a stable order.** `LIMIT … OFFSET …` without ORDER BY returns nondeterministic pages. The driver picks a stable key: SQLite `rowid` (or the PK for `WITHOUT ROWID` tables); Postgres the primary key, falling back to `ctid`. Offset paging is O(offset) but fine for an admin tool reading hundreds of rows at a time; the page API is shaped so keyset paging can be added later without interface changes.
 8. **Reading data must never mutate it.** Unlike the file browsers' "no accidental download" rail, the hazard here is accidental writes: every browsing query mydb generates is a plain `SELECT`/PRAGMA/catalog read. All UI-generated writes flow through one choke point (§3.6) — there is no code path where navigation executes DML/DDL.
 
@@ -70,7 +70,7 @@ myconsole's chrome, re-domained: tree on the left, a **tabbed workspace** on the
 │     ▸ Roles (5)                  │ │                                       │ │
 │   ▸ Remote (Annex) 7             │ └ rows 501–1000 of ~12,340 · 8 ms ──────┘ │
 │ ⣷ backup appdb → appdb.dump   14 MB written · dumping table public.orders    │ ← job bar
-│ ┌ ^R run ┊ e explain ┊ ^H history ┊ d backup ┊ B new conn ┊ ? help ┐         │ ← hint bar
+│ ┌ b backup ┊ C commands ┊ M maint ┊ Q jobs ┊ ^R run ┊ ? help ┐               │ ← hint bar
 │ 2 running · sort name · appdb: 34 tables                                     │ ← status bar
 └───────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -193,7 +193,7 @@ Same dual philosophy as the siblings (arrow keys + vim letters, everything rebin
 | **Connections** | `B` new · `E` edit · `X` delete · `c` connect (disconnects the previous) · `d` disconnect · `p` reveal password (10s) · `ctrl+r` reveal in form |
 | **SQL tab** | `ctrl+r`/`:w` run · `esc` cancel running · `e` explain · `ctrl+h` history · vim keys per the editor |
 | **Data tab** | `J`/`K` next/prev page · `h`/`l` column scroll · `enter` full cell value · `y` copy cell · `Y` copy row |
-| **Admin** | `C` commands menu · `M` maintenance · `I` info · backup/restore land in M5 |
+| **Admin** | `C` commands · `M` maintenance · `b` backup · `r` restore · `Q` jobs · `I` info |
 | **Jobs** | `Q` jobs tab · `c` cancel item · `C` cancel all · `p` pause · `K`/`J` reorder · `x` clear finished |
 | **App** | `m`/`F10` menus · `?`/`F1` help · `H` hint bar · `ctrl+q` quit |
 
@@ -353,7 +353,7 @@ CREATE TABLE schema_migrations ( version INTEGER PRIMARY KEY );
 `internal/jobs` adapts the iCloud download queue (states queued/running/done/failed/cancelled, pause, cancel, reorder, snapshot-for-render, tick-driven UI polling) with per-kind runners instead of the cloud bridge:
 
 - **SQLite backup** — `VACUUM INTO 'dest'` in-process; progress = destination size vs source size (a real percentage).
-- **Postgres backup/restore** — exec `pg_dump -Fc -v` / `pg_restore -v`; progress = bytes written to the artifact + current phase scraped from `-v` stderr (`dumping contents of table public.orders`); rendered as spinner + bytes + elapsed + phase (no fake percentage). Tool availability is probed at startup; when absent, backup falls back to the **built-in plain-SQL dumper** (schema + `INSERT`s via queries) with a visible fidelity warning, and restore of custom-format archives is greyed out with a hint.
+- **Postgres backup/restore** — exec `pg_dump -Fc -v` / `pg_restore -v`; progress = bytes written to the artifact + current phase scraped from `-v` stderr (`dumping contents of table public.orders`); rendered as spinner + bytes + elapsed + phase (no fake percentage). Tool availability is probed at startup; when absent, backup falls back to the **built-in plain-SQL dumper** (data-only `INSERT`s via queries — no schema, sequences, or large objects) with a visible fidelity warning; `prefer_pg_dump = false` forces it. Restoring a custom-format archive needs `pg_restore`.
 - **Maintenance** ops (VACUUM/ANALYZE/REINDEX/integrity check) run as jobs too when the target is large, so the UI stays responsive.
 - Concurrency: global limit 2, at most 1 job per connection. Jobs are **not persisted across restarts**; completed/failed jobs are logged to `registry.jobs_history` (visible in the Jobs tab).
 

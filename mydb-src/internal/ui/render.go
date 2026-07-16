@@ -20,6 +20,9 @@ func (m *Model) View() string {
 	if m.filtering || m.filterText != "" {
 		out = append(out, m.renderFilterLine())
 	}
+	if m.jobBarVisible() {
+		out = append(out, m.renderJobBar())
+	}
 	if m.hintBarH() > 0 {
 		out = append(out, m.renderHintBar()...)
 	}

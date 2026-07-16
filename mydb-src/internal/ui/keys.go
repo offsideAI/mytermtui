@@ -29,6 +29,9 @@ const (
 
 	ActCommands    Action = "common_commands"
 	ActMaintenance Action = "maintenance"
+	ActBackup      Action = "backup"
+	ActRestore     Action = "restore"
+	ActJobs        Action = "jobs"
 
 	ActSwapPane   Action = "swap_pane"
 	ActTabNext    Action = "tab_next"
@@ -69,6 +72,9 @@ var defaultBindings = map[Action][]string{
 
 	ActCommands:    {"C"},
 	ActMaintenance: {"M"},
+	ActBackup:      {"b"},
+	ActRestore:     {"r"},
+	ActJobs:        {"Q"},
 
 	ActSwapPane:   {"tab", "ctrl+w", "ctrl+o"},
 	ActTabNext:    {"]"},
@@ -137,7 +143,7 @@ var helpSections = []helpSection{
 	{"Navigate", []Action{ActUp, ActDown, ActOpen, ActExpand, ActCollapse, ActTop, ActBottom, ActPageUp, ActPageDown, ActFilter, ActRefresh}},
 	{"Connections", []Action{ActConnect, ActDisconnect, ActNewConn, ActEditConn, ActDeleteConn, ActRevealSecret}},
 	{"SQL", []Action{ActRunQuery, ActHistory}},
-	{"Admin", []Action{ActCommands, ActMaintenance}},
+	{"Admin", []Action{ActCommands, ActMaintenance, ActBackup, ActRestore, ActJobs}},
 	{"Workspace", []Action{ActSwapPane, ActTabNext, ActTabPrev, ActPanel, ActPaneNarrow, ActPaneWiden}},
 	{"App", []Action{ActHints, ActHelp, ActMenu, ActQuit}},
 }
@@ -167,6 +173,9 @@ var actionHelp = map[Action]string{
 
 	ActCommands:    "common commands (templates)…",
 	ActMaintenance: "maintenance (VACUUM/ANALYZE/…)…",
+	ActBackup:      "back up the connection…",
+	ActRestore:     "restore into the connection…",
+	ActJobs:        "jobs tab",
 
 	ActSwapPane:   "focus workspace / tree",
 	ActTabNext:    "next workspace tab",

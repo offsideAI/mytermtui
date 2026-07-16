@@ -43,6 +43,8 @@ func buildScenes() []scene {
 		{"04-annex", []string{"down", "down", "enter"}},
 		// Connection form with the URL field.
 		{"05-conn-form", []string{"B"}},
+		// Common-commands template picker.
+		{"06-commands", []string{"down", "down", "enter", "C"}},
 	}
 }
 

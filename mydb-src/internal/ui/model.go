@@ -17,6 +17,7 @@ import (
 	"github.com/offsideai/mydb/internal/dbx"
 	pgdrv "github.com/offsideai/mydb/internal/drivers/postgres"
 	sqlitedrv "github.com/offsideai/mydb/internal/drivers/sqlite"
+	"github.com/offsideai/mydb/internal/jobs"
 	"github.com/offsideai/mydb/internal/registry"
 )
 
@@ -97,6 +98,11 @@ type Model struct {
 	sqlSessions map[int64]*sqlSession // per-connection SQL tabs
 	qSeq        int                   // query id sequence
 
+	jobsQ       *jobs.Queue
+	jobsTicking bool
+	jobCursor   int
+	jobNote     tea.Cmd // pending status note from a finished job
+
 	spinning bool // a spinner tick is scheduled
 	tickN    int
 
@@ -145,6 +151,7 @@ func New(cfg config.Config, reg *registry.Registry) *Model {
 	for _, s := range m.roots {
 		m.expanded[s.Path] = true
 	}
+	m.jobsQ = jobs.New(2, m.onJobDone)
 	return m
 }
 
@@ -450,6 +457,21 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case adminDoneMsg:
 		return m, m.absorbAdminDone(msg)
 
+	case jobsTickMsg:
+		m.jobsQ.Tick()
+		m.tickN++
+		var cmds []tea.Cmd
+		if note := m.jobNote; note != nil {
+			m.jobNote = nil
+			cmds = append(cmds, note)
+		}
+		if m.jobsQ.HasActive() {
+			cmds = append(cmds, m.jobsTickCmd())
+		} else {
+			m.jobsTicking = false
+		}
+		return m, tea.Batch(cmds...)
+
 	case historyLoadedMsg:
 		if hm, ok := m.modal.(*HistoryModal); ok {
 			hm.absorb(msg)
@@ -689,6 +711,9 @@ func (m *Model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *Model) listHeight() int {
 	h := m.h - 4 - m.hintBarH() // menubar, breadcrumb, header, status bar
 	if m.filtering || m.filterText != "" {
+		h--
+	}
+	if m.jobBarVisible() {
 		h--
 	}
 	if h < 1 {

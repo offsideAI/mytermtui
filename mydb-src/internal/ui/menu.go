@@ -45,6 +45,10 @@ var menus = []menuDef{
 	{"Commands", []menuItem{
 		{label: "Common Commands…", action: ActCommands},
 		{label: "Maintenance…", action: ActMaintenance},
+		sep(),
+		{label: "Back Up…", action: ActBackup},
+		{label: "Restore…", action: ActRestore},
+		{label: "Jobs", action: ActJobs},
 	}},
 	{"Help", []menuItem{
 		{label: "Keyboard Reference", action: ActHelp},

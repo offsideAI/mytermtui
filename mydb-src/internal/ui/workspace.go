@@ -14,10 +14,11 @@ const (
 	tabInfo = iota
 	tabData
 	tabSQL
+	tabJobs
 	tabCount
 )
 
-var tabNames = [tabCount]string{"Info", "Data", "SQL"}
+var tabNames = [tabCount]string{"Info", "Data", "SQL", "Jobs"}
 
 // swapFocus toggles which side receives keys.
 func (m *Model) swapFocus() tea.Cmd {
@@ -73,8 +74,11 @@ func (m *Model) workspaceKey(msg tea.KeyMsg) tea.Cmd {
 		m.modal = &HelpModal{}
 		return nil
 	}
-	if m.tab == tabData {
+	switch m.tab {
+	case tabData:
 		return m.gridKey(key)
+	case tabJobs:
+		return m.jobsKey(key)
 	}
 	return nil
 }
@@ -91,6 +95,8 @@ func (m *Model) renderWorkspace(width, height int) []string {
 		lines = append(lines, m.renderGrid(width, body, m.focusRight)...)
 	case tabSQL:
 		lines = append(lines, m.renderSQLTab(width, body)...)
+	case tabJobs:
+		lines = append(lines, m.renderJobsTab(width, body)...)
 	default:
 		lines = append(lines, m.infoPanel(width, body)...)
 	}

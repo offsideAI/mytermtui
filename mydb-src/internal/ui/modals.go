@@ -91,6 +91,39 @@ func (c *TypedConfirmModal) View(m *Model, width int) string {
 	return strings.Join(lines, "\n")
 }
 
+// --- input (single-line prompt) --------------------------------------------
+
+type InputModal struct {
+	Title    string
+	Input    textinput.Model
+	OnSubmit func(m *Model, value string) tea.Cmd
+}
+
+func (im *InputModal) Update(m *Model, msg tea.KeyMsg) (Modal, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		return nil, nil
+	case "enter":
+		val := strings.TrimSpace(im.Input.Value())
+		if val == "" {
+			return nil, nil
+		}
+		return nil, im.OnSubmit(m, val)
+	}
+	var cmd tea.Cmd
+	im.Input, cmd = im.Input.Update(msg)
+	return im, cmd
+}
+
+func (im *InputModal) View(m *Model, width int) string {
+	t := m.theme
+	return strings.Join([]string{
+		t.ModalTitle.Render(im.Title), "",
+		im.Input.View(), "",
+		t.ModalDim.Render("enter confirm · esc cancel"),
+	}, "\n")
+}
+
 // --- help -----------------------------------------------------------------
 
 type HelpModal struct{ scroll int }

@@ -1,4 +1,4 @@
-# Deploying myterm & myconsole
+# Deploying myterm, myconsole & mydb
 
 How to rebuild and install the binaries after pulling or making changes.
 
@@ -9,9 +9,15 @@ cd ~/repos/offsideai/githubrepos_workspace_active_1/mytermtui
 
 go -C myterm-src    build -o myterm .
 go -C myconsole-src build -o myconsole .
+go -C mydb-src      build -o mydb .
 
-install myterm-src/myterm myconsole-src/myconsole /opt/homebrew/bin/   # or your install location
+install myterm-src/myterm myconsole-src/myconsole mydb-src/mydb /opt/homebrew/bin/   # or your install location
 ```
+
+`mydb` (the database admin TUI) is a third sibling module — pure Go, no
+cgo, no Full Disk Access needed. See [README-mydb.md](README-mydb.md).
+Its optional `pg_dump`/`pg_restore` dependency only affects PostgreSQL
+backup fidelity; nothing else requires external tools.
 
 Notes:
 

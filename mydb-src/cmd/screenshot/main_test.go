@@ -19,6 +19,7 @@ func TestScenesRender(t *testing.T) {
 		"03-sql":       {"user01@example.com", "3 row(s)"},
 		"04-annex":     {"public", "Roles", "sibling_a", "Local (Annex)"},
 		"05-conn-form": {"New connection", "URL", "Engine"},
+		"06-commands":  {"Common commands", "Create user", "Create database"},
 	}
 	for _, sc := range buildScenes() {
 		frame, err := renderScene(sc)

@@ -86,6 +86,15 @@ func (m *Model) dispatch(act Action) tea.Cmd {
 		return m.openCommands()
 	case ActMaintenance:
 		return m.openMaintenance()
+	case ActBackup:
+		return m.startBackup()
+	case ActRestore:
+		return m.startRestore()
+	case ActJobs:
+		m.panelOn = true
+		m.focusRight = true
+		m.tab = tabJobs
+		return nil
 
 	case ActSwapPane:
 		return m.swapFocus()
