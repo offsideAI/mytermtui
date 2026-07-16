@@ -1,0 +1,4 @@
+We will now create the spec for a new project called mydb which will live in the mydb-src folder. It will reuse the user experience of myconsole project and use a similar user interface. However, instead of browsing files and folders, it will browse and help administer local
+  databases, including any SQLite, and PostgreSQL databases. The spec for this product will live in SPEC-mydb.md. Before doing any implementation, we will neeed to go into plan mode to brainstorm and plan this mydb product which is a TUI that uses Go + BubbleTea to build a simple and
+  easy UI that allows the user to administer, manage, create, update permissions, run SQL queries on, and generally perform all the administrative functions that need to be performed to maintain and backup local databases. Please let's start by coming up with the detailed spec and then
+  ask me any clarifying questionsd in plan mode / interview mode before starting implementation.

@@ -24,7 +24,7 @@ git add screenshots && git commit
 ```
 
 - `-dir` is the folder shown in the shots. The repo root itself is a safe
-  choice (README.md, SPEC.md, myterm-src/, …).
+  choice (README.md, SPEC-myterm.md, myterm-src/, …).
 - `-filter` is what gets typed in the filter scenes (02/03/05) — pick a
   string that matches files in `-dir` (`md` matches the markdown files at
   the repo root; `go` matches nothing there since the sources moved into

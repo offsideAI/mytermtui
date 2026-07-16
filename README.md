@@ -30,7 +30,7 @@ Both show which files are **evicted** (cloud-only ☁), **download** marked file
 - [Development](#development)
 - [Troubleshooting](#troubleshooting)
 
-**Docs:** this README is the shared reference · [USAGE.md](USAGE.md) is the hands-on manual · [DEPLOY.md](DEPLOY.md) covers rebuild/install · [SPEC.md](SPEC.md) is the original design spec · [GETSTARTED.md](GETSTARTED.md) explains regenerating the screenshots.
+**Docs:** this README is the shared reference · [USAGE.md](USAGE.md) is the hands-on manual · [DEPLOY.md](DEPLOY.md) covers rebuild/install · [SPEC-myterm.md](SPEC-myterm.md) is the original design spec · [GETSTARTED.md](GETSTARTED.md) explains regenerating the screenshots.
 
 ---
 
@@ -51,16 +51,27 @@ They are separate binaries with separate config (`~/.config/myterm/`, `~/.config
 
 ## Installation
 
-Requires **Go 1.22+** and the **Xcode Command Line Tools** (the iCloud bridge uses cgo → Foundation).
+Requires **Go 1.22+** and the **Xcode Command Line Tools** (the iCloud bridge uses cgo → Foundation). Both apps live in this repo, so clone it once:
 
 ```sh
 git clone git@github.com:offsideAI/mytermtui.git
 cd mytermtui
+```
 
-go -C myterm-src    build -o myterm .
+Then install either app on its own — or both.
+
+### myterm
+
+```sh
+go -C myterm-src build -o myterm .
+install myterm-src/myterm /opt/homebrew/bin/   # or sudo … /usr/local/bin/
+```
+
+### myconsole
+
+```sh
 go -C myconsole-src build -o myconsole .
-
-install myterm-src/myterm myconsole-src/myconsole /opt/homebrew/bin/   # or sudo … /usr/local/bin/
+install myconsole-src/myconsole /opt/homebrew/bin/   # or sudo … /usr/local/bin/
 ```
 
 > **Full Disk Access required for iCloud browsing.** `~/Library/Mobile Documents` is protected; grant your terminal app Full Disk Access in *System Settings → Privacy & Security*. Without it the status bar shows a permission hint when you enter iCloud paths.
