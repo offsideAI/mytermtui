@@ -27,6 +27,9 @@ const (
 	ActRunQuery Action = "run_query"
 	ActHistory  Action = "query_history"
 
+	ActCommands    Action = "common_commands"
+	ActMaintenance Action = "maintenance"
+
 	ActSwapPane   Action = "swap_pane"
 	ActTabNext    Action = "tab_next"
 	ActTabPrev    Action = "tab_prev"
@@ -55,7 +58,7 @@ var defaultBindings = map[Action][]string{
 	ActRefresh:  {"ctrl+r"},
 
 	ActConnect:      {"c"},
-	ActDisconnect:   {"ctrl+c"},
+	ActDisconnect:   {"d"},
 	ActNewConn:      {"B"},
 	ActEditConn:     {"E"},
 	ActDeleteConn:   {"X"},
@@ -64,7 +67,10 @@ var defaultBindings = map[Action][]string{
 	ActRunQuery: {"f5"},
 	ActHistory:  {"ctrl+h"},
 
-	ActSwapPane:   {"tab"},
+	ActCommands:    {"C"},
+	ActMaintenance: {"M"},
+
+	ActSwapPane:   {"tab", "ctrl+w", "ctrl+o"},
 	ActTabNext:    {"]"},
 	ActTabPrev:    {"["},
 	ActPanel:      {"f3", "P"},
@@ -131,6 +137,7 @@ var helpSections = []helpSection{
 	{"Navigate", []Action{ActUp, ActDown, ActOpen, ActExpand, ActCollapse, ActTop, ActBottom, ActPageUp, ActPageDown, ActFilter, ActRefresh}},
 	{"Connections", []Action{ActConnect, ActDisconnect, ActNewConn, ActEditConn, ActDeleteConn, ActRevealSecret}},
 	{"SQL", []Action{ActRunQuery, ActHistory}},
+	{"Admin", []Action{ActCommands, ActMaintenance}},
 	{"Workspace", []Action{ActSwapPane, ActTabNext, ActTabPrev, ActPanel, ActPaneNarrow, ActPaneWiden}},
 	{"App", []Action{ActHints, ActHelp, ActMenu, ActQuit}},
 }
@@ -157,6 +164,9 @@ var actionHelp = map[Action]string{
 
 	ActRunQuery: "run the SQL buffer (also ctrl+r / :w in the tab)",
 	ActHistory:  "query history…",
+
+	ActCommands:    "common commands (templates)…",
+	ActMaintenance: "maintenance (VACUUM/ANALYZE/…)…",
 
 	ActSwapPane:   "focus workspace / tree",
 	ActTabNext:    "next workspace tab",

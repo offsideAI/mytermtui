@@ -58,7 +58,7 @@ func (m *Model) workspaceKey(msg tea.KeyMsg) tea.Cmd {
 	}
 	key := msg.String()
 	switch key {
-	case "tab", "esc":
+	case "tab", "ctrl+w", "ctrl+o", "esc":
 		m.focusRight = false
 		return nil
 	case "[":

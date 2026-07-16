@@ -31,7 +31,10 @@ func (Driver) Open(_ context.Context, cfg dbx.ConnConfig) (dbx.Conn, error) {
 	return &Conn{}, nil
 }
 
-type Conn struct{}
+type Conn struct {
+	// LastSQL records the most recent Query script — tests assert on it.
+	LastSQL string
+}
 
 func (*Conn) Ping(context.Context) error { return nil }
 func (*Conn) Close() error               { return nil }
@@ -70,7 +73,9 @@ func (*Conn) Indexes(context.Context, dbx.ObjectRef) ([]dbx.IndexInfo, error) {
 }
 
 func (*Conn) Roles(context.Context) ([]dbx.RoleInfo, error) {
-	return []dbx.RoleInfo{{Name: "admin", CanLogin: true}}, nil
+	return []dbx.RoleInfo{
+		{Name: "admin", CanLogin: true, MemberOf: []string{"pg_monitor"}},
+	}, nil
 }
 
 func (*Conn) ReadPage(_ context.Context, ref dbx.ObjectRef, pr dbx.PageReq) (*dbx.Result, error) {
@@ -87,7 +92,8 @@ func (*Conn) ReadPage(_ context.Context, ref dbx.ObjectRef, pr dbx.PageReq) (*db
 	return res, nil
 }
 
-func (*Conn) Query(_ context.Context, _, sql string, _ dbx.QueryReq) (*dbx.Result, error) {
+func (c *Conn) Query(_ context.Context, _, sql string, _ dbx.QueryReq) (*dbx.Result, error) {
+	c.LastSQL = sql
 	return &dbx.Result{
 		Columns: []dbx.Column{{Name: "echo", TypeName: "text"}},
 		Rows:    [][]dbx.Value{{{Kind: dbx.VText, S: sql}}},

@@ -178,7 +178,7 @@ func (m *Model) sqlTabKey(msg tea.KeyMsg) tea.Cmd {
 	s := m.currentSQLSession(true)
 	if s == nil {
 		switch key {
-		case "tab", "esc":
+		case "tab", "ctrl+w", "ctrl+o", "esc":
 			m.focusRight = false
 		case "[":
 			return m.switchTab(-1)
@@ -191,6 +191,14 @@ func (m *Model) sqlTabKey(msg tea.KeyMsg) tea.Cmd {
 	// Run works from anywhere in the tab, any editor mode.
 	if key == "ctrl+r" {
 		return m.runSession(s, strings.TrimSpace(string(s.editor.Content())))
+	}
+	// ctrl+w / ctrl+o swap focus to the tree from anywhere — including
+	// the editor's insert mode, where tab types indentation instead.
+	// (ctrl+o is the fallback for terminals/tmux setups that eat ctrl+w.)
+	if key == "ctrl+w" || key == "ctrl+o" {
+		m.focusRight = false
+		s.editorFocused = true // next visit starts in the editor
+		return nil
 	}
 
 	if s.editorFocused {
@@ -215,7 +223,7 @@ func (m *Model) sqlTabKey(msg tea.KeyMsg) tea.Cmd {
 		}
 		s.editorFocused = true
 		return nil
-	case "tab":
+	case "tab", "ctrl+w", "ctrl+o":
 		m.focusRight = false
 		s.editorFocused = true // next visit starts in the editor
 		return nil

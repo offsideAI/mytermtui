@@ -7,7 +7,7 @@ A working breakdown of [SPEC-mydb.md](SPEC-mydb.md) into **Epics → Stories →
 | M1 | [E1](#epic-e1--skeleton-registry-sqlite-browse-m1-) | Skeleton, registry, SQLite browse | 🟢 verified on-device (2026-07-15) |
 | M2 | [E2](#epic-e2--data-grid--postgresql-m2-) | Data grid + PostgreSQL | 🟢 verified on-device (2026-07-15) — one refinement open (E2.S1.T2) |
 | M3 | [E3](#epic-e3--sql-runner-m3-) | SQL runner | 🟢 verified on-device (2026-07-15) |
-| M4 | [E4](#epic-e4--admin--safety-m4-) | Admin + safety | ⬜ not started |
+| M4 | [E4](#epic-e4--admin--safety-m4-) | Admin + safety | 🟢 verified on-device (2026-07-16) |
 | M5 | [E5](#epic-e5--jobs-backup--restore-m5-) | Jobs: backup & restore | ⬜ not started |
 
 > Status legend: ⬜ not started · 🟡 in progress · ✅ done · ⏸️ blocked/deferred · 🟢 verified on-device · 🚧 needs refining
@@ -143,30 +143,57 @@ A working breakdown of [SPEC-mydb.md](SPEC-mydb.md) into **Epics → Stories →
 - ✅ E3.S5.T1 — `internal/dbx/fake` in-memory multi-database driver (also powers the annex/SQL headless tests)
 - ✅ E3.S5.T2 — `cmd/screenshot` drives the real Model headlessly over a temp fixture + fake driver; five scenes with light golden assertions in `go test`
 
+### Story E3.S6 — Roles as a top-level view 🟢
+*Roles are cluster-wide, so they must not nest under one connection string.* (§3.2) — 🟢 verified on-device 2026-07-16 against a live local PostgreSQL 16: real roles listed under the top-level section, none under the connection.
+- ✅ E3.S6.T1 — New top-level **Roles** section in the sidebar; one entry per connected server (deduped by host:port, labeled by its saved connection, server shown in Details), each expanding to the server's role list
+- ✅ E3.S6.T2 — The Roles group disappears from under connections; entries clear on disconnect/delete and refresh with `ctrl+r`
+- ✅ E3.S6.T3 — Headless tests: placement, lazy loading, dedup across connections to one server, disconnect clearing
+
+### Story E3.S7 — Wider tree panel, untruncated connection strings 🟢
+*The left panel defaults to half the screen and shows the whole connection target.* (§3.1) — 🟢 verified on-device 2026-07-16: `postgres · localhost:5432/postgres` rendered whole at 160 columns.
+- ✅ E3.S7.T1 — `split_ratio` default is 0.50 (config + spec)
+- ✅ E3.S7.T2 — The tree's Details column sizes to its visible content (was a fixed 32-cell cap), so a connection row's full `engine · host:port/db` renders without truncation or wrapping whenever the pane can fit it
+- ✅ E3.S7.T3 — Headless render test asserting the full connection string appears in the frame
+
+### Story E3.S8 — Single active connection & status indicator 🟢
+*One connection is open at a time, and its state is always visible.* (§3.2, §3.1) — 🟢 verified on-device 2026-07-16: connecting the sqlite fixture with `c` flipped the indicator from `● local-pg` to `● smoke`, auto-disconnecting the Postgres connection.
+- ✅ E3.S8.T1 — Connecting (via `c` or expand) disconnects the previously connected database first, to save resources; its Annex/Roles entries and caches clear with it (SQL buffers persist, running queries cancel)
+- ✅ E3.S8.T2 — Disconnect moves to the `d` hotkey (was `ctrl+c`)
+- ✅ E3.S8.T3 — Prominent status-bar indicator: green `●` + connection name while connected, red `●` disconnected otherwise
+- ✅ E3.S8.T4 — Headless tests: auto-disconnect on connect, `d`, indicator states
+
+### Story E3.S9 — Roles labeled by host; 50% panel 🟢
+*(refines E3.S6/S7 after on-device review)* — 🟢 verified on-device 2026-07-16.
+- ✅ E3.S9.T1 — Roles section entries are labeled by the server's **host** (e.g. `localhost`), not by whichever connection-string name reached it first
+- ✅ E3.S9.T2 — `split_ratio` default is 0.50 (config + spec; briefly 0.75, settled at half after on-device review)
+- ✅ E3.S9.T3 — `ctrl+w` joins `tab` as the panel focus-swap key (vim window-switch muscle memory; unlike `tab`, it also works while the SQL editor is in insert mode); `ctrl+o` added as a fallback for terminals/tmux configs that intercept `ctrl+w` (raw-byte pty-verified)
+
 ---
 
-## Epic E4 — Admin + safety (M4) ⬜
+## Epic E4 — Admin + safety (M4) 🟢
 
 > Every UI-generated write flows through one guarded choke point; the repetitive incantations become templates. *(Spec §3.5–§3.6, §4.6.)*
+>
+> 🟢 2026-07-16: milestone shipped and verified on-device — a pty session ran the Maintenance picker's integrity check on SQLite (showed `ok`); the CREATE USER / CREATE DATABASE / GRANT template flow was executed end-to-end against a live PostgreSQL 16 (role + database verified, then cleaned up).
 
-### Story E4.S1 — The safety plan ⬜
+### Story E4.S1 — The safety plan ✅
 *Destructive operations can't happen by accident.* (§4.6)
-- ⬜ E4.S1.T1 — `dbx/plan.go`: `sqlPlan{Stmts, Danger, Summary, ConfirmToken, Tx}` built at the action layer (never SQL parsing)
-- ⬜ E4.S1.T2 — Danger tiers: High → typed confirmation showing full SQL + blast radius; Medium → y/n preview (`confirm_medium`); reads free
-- ⬜ E4.S1.T3 — Transaction wrapping where `TransactionalDDL`; raw editor SQL stays exempt
-- ⬜ E4.S1.T4 — Per-connection read-only option greys out mutating actions
+- ✅ E4.S1.T1 — `dbx/plan.go`: `Plan{Stmts, Danger, Summary, ConfirmToken, Tx, DB}` built at the action layer (never SQL parsing); `runPlan` is the single choke point
+- ✅ E4.S1.T2 — Danger tiers: High → typed confirmation (object name) showing full SQL + blast radius; Medium → y/n preview (`confirm_medium`); None runs free
+- ✅ E4.S1.T3 — Transaction wrapping where `TransactionalDDL` (explicit BEGIN/COMMIT for SQLite; Postgres' implicit script tx, single statements never wrapped); raw editor SQL stays exempt
+- ✅ E4.S1.T4 — Per-connection read-only: Access field in the form → `mode=ro`/session read-only, `⏸` glyph, and plans refused before confirmation
 
-### Story E4.S2 — Common-commands menu ⬜
+### Story E4.S2 — Common-commands menu ✅
 *CREATE USER / CREATE DATABASE / GRANT are three dialogs, not typing.* (§3.5)
-- ⬜ E4.S2.T1 — `dbx/templates.go` catalog (params, danger levels) — adding a template is adding an entry
-- ⬜ E4.S2.T2 — `dbx/dialect.go`: `QuoteIdent`/`QuoteLiteral` with identifier validation; masked password params
-- ⬜ E4.S2.T3 — `C` menu → parameter dialogs → **SQL preview modal** → danger-appropriate confirm → execute
-- ⬜ E4.S2.T4 — v1 catalog: create user, create database with owner, grant all, grant read-only on schema, change password, drop user/database
+- ✅ E4.S2.T1 — `dbx/templates.go` catalog (params, danger levels) — adding a template is adding an entry
+- ✅ E4.S2.T2 — `dbx/dialect.go`: `QuoteIdent`/`QuoteLiteral`/`ValidIdent`; secret params masked (`ctrl+r` reveals in the flow)
+- ✅ E4.S2.T3 — `C` picker → per-parameter dialogs → **SQL preview** → danger-appropriate confirm → execute → read-back rows
+- ✅ E4.S2.T4 — v1 catalog: create user, create database with owner, grant all, grant read-only on schema, change password, drop user/database
 
-### Story E4.S3 — Roles & maintenance ⬜
+### Story E4.S3 — Roles & maintenance ✅
 *Postgres roles and routine upkeep from the tree.*
-- ⬜ E4.S3.T1 — Roles view: memberships and grants in the Info tab; role nodes actionable
-- ⬜ E4.S3.T2 — Maintenance ops per capability: `VACUUM`, `ANALYZE`, `REINDEX`, `PRAGMA integrity_check`, surfaced contextually (`M`)
+- ✅ E4.S3.T1 — Roles carry memberships (`pg_auth_members`); the Info panel shows "member of" for a role node
+- ✅ E4.S3.T2 — `M` maintenance picker per engine/kind: SQLite `VACUUM`/`ANALYZE`/`REINDEX`/`PRAGMA integrity_check`, Postgres `VACUUM (ANALYZE)`/`ANALYZE`/`REINDEX`, table- or database-scoped from the cursor node — all through the plan choke point
 
 ---
 

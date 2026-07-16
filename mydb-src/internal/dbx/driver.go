@@ -133,6 +133,7 @@ type RoleInfo struct {
 	Name     string
 	CanLogin bool
 	Super    bool
+	MemberOf []string
 }
 
 // ConnStats is cheap per-connection metadata shown on the tree row.

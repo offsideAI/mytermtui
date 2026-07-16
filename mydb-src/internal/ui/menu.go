@@ -42,6 +42,10 @@ var menus = []menuDef{
 		sep(),
 		{label: "Reveal Password (10s)", action: ActRevealSecret},
 	}},
+	{"Commands", []menuItem{
+		{label: "Common Commands…", action: ActCommands},
+		{label: "Maintenance…", action: ActMaintenance},
+	}},
 	{"Help", []menuItem{
 		{label: "Keyboard Reference", action: ActHelp},
 	}},

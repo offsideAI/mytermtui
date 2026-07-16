@@ -221,6 +221,7 @@ func openConnCmd(drv dbx.Driver, c registry.Connection) tea.Cmd {
 			Name: c.Name, Path: config.ExpandTilde(c.Path),
 			Host: c.Host, Port: c.Port, DBName: c.DBName,
 			Username: c.Username, Password: c.Secret,
+			ReadOnly: c.ReadOnly(),
 		})
 		if err != nil {
 			return connOpenedMsg{id: c.ID, err: err}
@@ -256,8 +257,8 @@ func fetchChildrenCmd(conn dbx.Conn, caps dbx.Capabilities, n dbx.Node) tea.Cmd 
 		switch n.Kind {
 		case dbx.KConnection:
 			// A saved connection scopes to its own database (§3.2): its
-			// children are that database's schemas plus the Roles group.
-			// Sibling databases surface in the Annex sections instead.
+			// children are that database's schemas — sibling databases go
+			// to the Annex sections and cluster roles to the Roles section.
 			if !caps.Schemas {
 				return relGroups("", "")
 			}
@@ -265,11 +266,7 @@ func fetchChildrenCmd(conn dbx.Conn, caps dbx.Capabilities, n dbx.Node) tea.Cmd 
 			if err != nil {
 				return fail(err)
 			}
-			nodes := schemaNodes(n, schemas)
-			if caps.Roles {
-				nodes = append(nodes, rolesGroup(n))
-			}
-			return childrenLoadedMsg{path: n.Path, nodes: nodes}
+			return childrenLoadedMsg{path: n.Path, nodes: schemaNodes(n, schemas)}
 		case dbx.KDatabase:
 			schemas, err := conn.Schemas(ctx, n.Ref.Database)
 			if err != nil {
@@ -403,6 +400,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.serverInfo[msg.id] = msg.info
 		delete(m.connErr, msg.id)
 		c := m.connByID[msg.id]
+		m.rebuildRolesSection()
 		m.rebuildView("")
 		cmds := []tea.Cmd{
 			fetchChildrenCmd(msg.conn, m.capsFor(msg.id), connNode(c)),
@@ -448,6 +446,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case queryDoneMsg:
 		return m, m.absorbQueryDone(msg)
+
+	case adminDoneMsg:
+		return m, m.absorbAdminDone(msg)
 
 	case historyLoadedMsg:
 		if hm, ok := m.modal.(*HistoryModal); ok {
@@ -570,6 +571,27 @@ func (m *Model) rebuildAnnex() {
 		sort.Slice(nodes, func(i, j int) bool { return nodes[i].Name < nodes[j].Name })
 		m.childCache[secPath] = nodes
 	}
+	m.rebuildRolesSection()
+}
+
+// rebuildRolesSection recomputes the top-level Roles section: one entry
+// per CONNECTED roles-capable server, deduplicated by host:port (the
+// first saved connection to a server labels it).
+func (m *Model) rebuildRolesSection() {
+	var nodes []dbx.Node
+	seen := map[string]bool{}
+	for _, c := range m.conns {
+		if _, open := m.open[c.ID]; !open || !m.capsFor(c.ID).Roles {
+			continue
+		}
+		key := fmt.Sprintf("%s:%d", c.Host, c.Port)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		nodes = append(nodes, rolesServerNode(c))
+	}
+	m.childCache[dbx.SectionPath(locRoles)] = nodes
 }
 
 // hasSavedConn reports whether a server database is already represented

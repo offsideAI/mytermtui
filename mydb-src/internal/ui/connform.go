@@ -20,6 +20,7 @@ type connForm struct {
 	editID   int64 // 0 = create
 	engine   int   // index into engines
 	locality int   // index into localities
+	access   int   // index into accesses (read-write / read-only)
 	fields   map[string]*textinput.Model
 	focus    int
 	errMsg   string
@@ -28,12 +29,13 @@ type connForm struct {
 var (
 	engines    = []string{"sqlite", "postgres"}
 	localities = []string{"local", "remote"}
+	accesses   = []string{"read-write", "read-only"}
 )
 
 // fieldOrder lists the visible field ids for the current engine. The URL
 // field leads: pasting a whole connection string there fills the rest.
 func (f *connForm) fieldOrder() []string {
-	base := []string{"url", "name", "engine", "locality"}
+	base := []string{"url", "name", "engine", "locality", "access"}
 	if engines[f.engine] == "sqlite" {
 		return append(base, "path")
 	}
@@ -42,7 +44,7 @@ func (f *connForm) fieldOrder() []string {
 
 var fieldLabels = map[string]string{
 	"url":  "URL",
-	"name": "Name", "engine": "Engine", "locality": "Section",
+	"name": "Name", "engine": "Engine", "locality": "Section", "access": "Access",
 	"path": "File", "host": "Host", "port": "Port",
 	"dbname": "Database", "username": "User", "password": "Password",
 }
@@ -82,6 +84,9 @@ func newConnForm(m *Model, edit *registry.Connection) *connForm {
 		f.fields["password"].SetValue(edit.Secret)
 		f.engine = indexOf(engines, edit.Engine)
 		f.locality = indexOf(localities, edit.Locality)
+		if edit.ReadOnly() {
+			f.access = 1
+		}
 	}
 	f.syncFocus()
 	return f
@@ -112,7 +117,9 @@ func (f *connForm) syncFocus() {
 	}
 }
 
-func (f *connForm) isChoice(id string) bool { return id == "engine" || id == "locality" }
+func (f *connForm) isChoice(id string) bool {
+	return id == "engine" || id == "locality" || id == "access"
+}
 
 func (f *connForm) cycle(id string, dir int) {
 	switch id {
@@ -120,6 +127,8 @@ func (f *connForm) cycle(id string, dir int) {
 		f.engine = (f.engine + dir + len(engines)) % len(engines)
 	case "locality":
 		f.locality = (f.locality + dir + len(localities)) % len(localities)
+	case "access":
+		f.access = (f.access + dir + len(accesses)) % len(accesses)
 	}
 }
 
@@ -232,6 +241,7 @@ func (f *connForm) submit(m *Model) (Modal, tea.Cmd) {
 		DBName:   strings.TrimSpace(f.fields["dbname"].Value()),
 		Username: strings.TrimSpace(f.fields["username"].Value()),
 		Secret:   f.fields["password"].Value(),
+		Options:  registry.OptionsJSON(f.access == 1),
 	}
 	if p := strings.TrimSpace(f.fields["port"].Value()); p != "" {
 		n, err := strconv.Atoi(p)
@@ -289,6 +299,8 @@ func (f *connForm) View(m *Model, width int) string {
 			control = choiceView(t, engines, f.engine)
 		case "locality":
 			control = choiceView(t, localities, f.locality)
+		case "access":
+			control = choiceView(t, accesses, f.access)
 		default:
 			control = f.fields[id].View()
 		}

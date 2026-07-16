@@ -146,13 +146,33 @@ func (m *Model) renderMain() []string {
 
 // treeLines renders the tree pane: breadcrumb, column header, listH rows.
 func (m *Model) treeLines(width, listH int) []string {
+	detW := m.detailWidth(width)
 	lines := make([]string, 0, listH+2)
 	lines = append(lines, m.renderBreadcrumb(width))
-	lines = append(lines, m.renderHeader(width))
+	lines = append(lines, m.renderHeader(width, detW))
 	for i := 0; i < listH; i++ {
-		lines = append(lines, m.renderRow(m.offset+i, width))
+		lines = append(lines, m.renderRow(m.offset+i, width, detW))
 	}
 	return lines
+}
+
+// detailWidth sizes the Details column to its content, so connection
+// targets render untruncated whenever the pane can fit them (§3.1). The
+// name column keeps a minimum share as the backstop.
+func (m *Model) detailWidth(listW int) int {
+	w := 10
+	for _, ni := range m.view {
+		if dw := lipgloss.Width(m.nodeDetail(m.nodes[ni])); dw > w {
+			w = dw
+		}
+	}
+	if cap := listW - 30; w > cap {
+		w = cap
+	}
+	if w < 10 {
+		w = 10
+	}
+	return w
 }
 
 func (m *Model) renderBreadcrumb(width int) string {
@@ -182,32 +202,23 @@ func (m *Model) anyOpening() bool {
 	return false
 }
 
-func (m *Model) renderHeader(width int) string {
-	nameW := nameColWidth(width)
-	line := "  " + pad("Name", nameW) + " " + padLeft("Details", detailColWidth(width)) + "  "
+func (m *Model) renderHeader(width, detW int) string {
+	nameW := nameColWidth(width, detW)
+	line := "  " + pad("Name", nameW) + " " + padLeft("Details", detW) + "  "
 	return m.theme.Header.Render(pad(line, width))
 }
 
-func detailColWidth(listW int) int {
-	w := listW / 3
-	if w > 32 {
-		w = 32
-	}
-	if w < 10 {
-		w = 10
-	}
-	return w
-}
-
-func nameColWidth(listW int) int {
-	w := listW - detailColWidth(listW) - 5
+func nameColWidth(listW, detW int) int {
+	// Row = " " + icon(2) + name + " " + detail(detW) + " " + glyph(1) =
+	// name + detW + 6; reserve 6 so the trailing glyph never truncates.
+	w := listW - detW - 6
 	if w < 8 {
 		w = 8
 	}
 	return w
 }
 
-func (m *Model) renderRow(vi, width int) string {
+func (m *Model) renderRow(vi, width, detW int) string {
 	t := m.theme
 	if vi >= len(m.view) {
 		if vi == 0 && len(m.view) == 0 {
@@ -235,13 +246,12 @@ func (m *Model) renderRow(vi, width int) string {
 	}
 	indent := strings.Repeat("  ", n.Depth)
 	icon = indent + icon
-	nameW := nameColWidth(width) - 2*n.Depth
+	nameW := nameColWidth(width, detW) - 2*n.Depth
 	if nameW < 4 {
 		nameW = 4
 	}
 	name := pad(truncMiddle(sanitize(m.displayName(n)), nameW), nameW)
 
-	detW := detailColWidth(width)
 	detail := truncEnd(m.nodeDetail(n), detW)
 	glyph, gstyle := m.connGlyph(n)
 
@@ -323,6 +333,10 @@ func (m *Model) nodeDetail(n dbx.Node) string {
 			det = "unique · " + det
 		}
 		return det
+	case dbx.KGroup:
+		if n.Group == dbx.GroupRoles && n.Meta.Target != "" {
+			return n.Meta.Target // the server this roles entry belongs to
+		}
 	}
 	return ""
 }
@@ -335,6 +349,9 @@ func (m *Model) connGlyph(n dbx.Node) (string, lipgloss.Style) {
 	}
 	switch m.state[n.ConnID] {
 	case connOpen:
+		if c, ok := m.connByID[n.ConnID]; ok && c.ReadOnly() {
+			return "⏸", t.ConnRow // read-only session (blue, per the glyph table)
+		}
 		return "●", t.GlyphOpen
 	case connOpening:
 		return "◐", t.GlyphBusy
@@ -381,7 +398,12 @@ func (m *Model) infoPanel(width, height int) []string {
 		switch n.Kind {
 		case dbx.KSection:
 			addKV("section", n.Name)
-			if isAnnex(n.Meta.Locality) {
+			if n.Meta.Locality == locRoles {
+				addKV("servers", fmt.Sprintf("%d", len(m.childCache[n.Path])))
+				add("")
+				add(t.PanelMeta.Render("cluster roles, grouped per connected server —"))
+				add(t.PanelMeta.Render("roles belong to a server, not a connection string."))
+			} else if isAnnex(n.Meta.Locality) {
 				addKV("databases", fmt.Sprintf("%d", len(m.childCache[n.Path])))
 				add("")
 				add(t.PanelMeta.Render("databases discovered on connected servers,"))
@@ -474,6 +496,9 @@ func (m *Model) infoPanel(width, height int) []string {
 			addKV("role", n.Name)
 			addKV("can log in", yesNo(n.Meta.CanLogin))
 			addKV("superuser", yesNo(n.Meta.Super))
+			if n.Meta.MemberOf != "" {
+				addKV("member of", n.Meta.MemberOf)
+			}
 		case dbx.KColumn:
 			addKV("column of", n.Ref.Name)
 			addKV("type", n.Meta.TypeName)
@@ -498,6 +523,17 @@ func (m *Model) infoPanel(width, height int) []string {
 		out[i] = line
 	}
 	return out
+}
+
+// activeConnName is the currently connected database's name ("" when
+// nothing is connected — there is at most one, per §3.2).
+func (m *Model) activeConnName() string {
+	for _, c := range m.conns {
+		if m.state[c.ID] == connOpen {
+			return c.Name
+		}
+	}
+	return ""
 }
 
 func (m *Model) stateLabel(id int64) string {
@@ -561,8 +597,13 @@ func (m *Model) renderStatusBar() string {
 		left = t.StatusInfo.Render(info)
 	}
 
-	right := "? help "
-	rightR := t.StatusBar.Render(right)
+	// The connection indicator is always visible: green ● + name while
+	// connected, red ● while not (§3.1).
+	ind := t.StatusErr.Render("● disconnected ")
+	if name := m.activeConnName(); name != "" {
+		ind = t.StatusOK.Render("● " + truncEnd(sanitize(name), 24) + " ")
+	}
+	rightR := ind + t.StatusBar.Render("· ? help ")
 
 	gap := m.w - lipgloss.Width(left) - lipgloss.Width(rightR)
 	if gap < 1 {

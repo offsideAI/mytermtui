@@ -48,7 +48,7 @@ func Default() Config {
 		General: General{
 			ShowHints:     true,
 			ShowPanel:     true,
-			SplitRatio:    0.35,
+			SplitRatio:    0.50,
 			ConfirmMedium: true,
 		},
 		Query: Query{
@@ -102,7 +102,7 @@ func Load(path string) (Config, error) {
 		return Default(), err
 	}
 	if cfg.General.SplitRatio < 0.15 || cfg.General.SplitRatio > 0.85 {
-		cfg.General.SplitRatio = 0.35
+		cfg.General.SplitRatio = 0.50
 	}
 	if cfg.Query.PageSize < 10 {
 		cfg.Query.PageSize = 500

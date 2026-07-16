@@ -82,6 +82,11 @@ func (m *Model) dispatch(act Action) tea.Cmd {
 	case ActHistory:
 		return m.openHistory()
 
+	case ActCommands:
+		return m.openCommands()
+	case ActMaintenance:
+		return m.openMaintenance()
+
 	case ActSwapPane:
 		return m.swapFocus()
 	case ActTabNext:
@@ -178,7 +183,9 @@ func (m *Model) collapseOrParent() tea.Cmd {
 	return nil
 }
 
-// connect opens a saved connection through its engine driver.
+// connect opens a saved connection through its engine driver. Only one
+// connection is active at a time (§3.2): any other open connection is
+// disconnected first, releasing its server resources.
 func (m *Model) connect(n dbx.Node) tea.Cmd {
 	c, ok := m.connByID[n.ConnID]
 	if !ok {
@@ -190,35 +197,65 @@ func (m *Model) connect(n dbx.Node) tea.Cmd {
 		m.connErr[c.ID] = "engine not available yet"
 		return m.note(levelWarn, c.Engine+" support arrives in a later milestone")
 	}
+	var cmds []tea.Cmd
+	var others []int64
+	for id := range m.open {
+		if id != c.ID {
+			others = append(others, id)
+		}
+	}
+	for _, id := range others {
+		if cmd := m.disconnectByID(id); cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	}
+	if len(others) > 0 {
+		m.rebuildAnnex()
+	}
 	m.state[c.ID] = connOpening
 	m.rebuildView("")
-	return tea.Batch(openConnCmd(drv, c), m.ensureSpin())
+	cmds = append(cmds, openConnCmd(drv, c), m.ensureSpin())
+	return tea.Batch(cmds...)
 }
 
-// disconnect closes the cursor row's connection and forgets its subtree.
+// disconnectByID silently closes one connection and forgets everything
+// derived from it (subtree, Annex, Roles, grid; a running query is
+// cancelled — the SQL buffer persists). Callers rebuild the view.
+func (m *Model) disconnectByID(id int64) tea.Cmd {
+	conn, ok := m.open[id]
+	if !ok {
+		return nil
+	}
+	c := m.connByID[id]
+	delete(m.open, id)
+	m.state[id] = connClosed
+	delete(m.serverInfo, id)
+	if m.grid.connID == id {
+		m.grid = gridState{}
+	}
+	if s := m.sqlSessions[id]; s != nil {
+		m.cancelSession(s)
+	}
+	delete(m.annexDBs, id)
+	m.dropSubtree(dbx.ConnPath(c.Locality, id))
+	m.dropSubtree(fmt.Sprintf("%s/conn:%d", dbx.SectionPath(annexLocality(c.Locality)), id))
+	m.dropSubtree(rolesServerPath(id))
+	return closeConnCmd(id, conn)
+}
+
+// disconnect closes the cursor row's connection (the d hotkey).
 func (m *Model) disconnect() tea.Cmd {
 	c := m.cursorConn()
 	if c == nil {
 		return nil
 	}
-	conn, ok := m.open[c.ID]
-	if !ok {
+	cmd := m.disconnectByID(c.ID)
+	if cmd == nil {
 		return nil
 	}
-	delete(m.open, c.ID)
-	m.state[c.ID] = connClosed
-	delete(m.serverInfo, c.ID)
-	if m.grid.connID == c.ID {
-		m.grid = gridState{}
-	}
-	path := dbx.ConnPath(c.Locality, c.ID)
-	m.dropSubtree(path)
-	// The Annex loses this server's discovered databases too.
-	delete(m.annexDBs, c.ID)
-	m.dropSubtree(fmt.Sprintf("%s/conn:%d", dbx.SectionPath(annexLocality(c.Locality)), c.ID))
 	m.rebuildAnnex()
-	m.rebuildView(path)
-	return tea.Batch(closeConnCmd(c.ID, conn), m.note(levelOK, "disconnected "+c.Name))
+	m.rebuildView(dbx.ConnPath(c.Locality, c.ID))
+	return tea.Batch(cmd, m.note(levelOK, "disconnected "+c.Name))
 }
 
 // refresh reloads the registry listing and re-fetches the schema of
@@ -241,6 +278,8 @@ func (m *Model) refresh() tea.Cmd {
 		if m.capsFor(id).MultipleDatabases {
 			cmds = append(cmds, discoverCmd(conn, id))
 		}
+		// Cached role lists refetch on next expand.
+		delete(m.childCache, rolesServerPath(id))
 	}
 	cmds = append(cmds, m.note(levelInfo, "refreshing…"))
 	return tea.Batch(cmds...)
@@ -299,6 +338,7 @@ func (m *Model) confirmDeleteConn() tea.Cmd {
 			m.dropSubtree(dbx.ConnPath(target.Locality, target.ID))
 			delete(m.annexDBs, target.ID)
 			m.dropSubtree(fmt.Sprintf("%s/conn:%d", dbx.SectionPath(annexLocality(target.Locality)), target.ID))
+			m.dropSubtree(rolesServerPath(target.ID))
 			m.rebuildAnnex()
 			cmds = append(cmds, regCmd("deleted "+target.Name, func() error {
 				return m.reg.Delete(target.ID)

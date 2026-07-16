@@ -129,7 +129,7 @@ func visible(m *Model) []string {
 func TestLaunchShowsSectionsAndConnections(t *testing.T) {
 	m, _ := fixture(t)
 	rows := visible(m)
-	want := []string{"Local", "app", "Local (Annex)", "Remote", "Remote (Annex)"}
+	want := []string{"Local", "app", "Local (Annex)", "Remote", "Remote (Annex)", "Roles"}
 	if len(rows) != len(want) {
 		t.Fatalf("rows = %v, want %v", rows, want)
 	}
@@ -225,7 +225,7 @@ func TestDisconnectDropsSubtree(t *testing.T) {
 	if !contains(visible(m), "Tables (1)") {
 		t.Fatal("precondition: schema loaded")
 	}
-	press(t, m, "ctrl+c")
+	press(t, m, "d")
 	if contains(visible(m), "Tables (1)") {
 		t.Fatalf("disconnect left schema rows: %v", visible(m))
 	}
@@ -245,6 +245,7 @@ func TestConnFormCreatesConnection(t *testing.T) {
 	press(t, m, "s", "e", "c", "o", "n", "d") // name
 	press(t, m, "enter")                      // → engine (sqlite already)
 	press(t, m, "enter")                      // → locality (local already)
+	press(t, m, "enter")                      // → access (read-write already)
 	press(t, m, "enter")                      // → path
 	for _, r := range dbPath {
 		press(t, m, string(r)) // path field

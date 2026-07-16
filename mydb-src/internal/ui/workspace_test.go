@@ -43,6 +43,37 @@ func TestWorkspaceFocusAndTabs(t *testing.T) {
 	if m.focusRight {
 		t.Fatal("tab should return focus to the tree")
 	}
+
+	// ctrl+w swaps focus both ways, like tab.
+	press(t, m, "ctrl+w")
+	if !m.focusRight {
+		t.Fatal("ctrl+w should focus the workspace")
+	}
+	press(t, m, "ctrl+w")
+	if m.focusRight {
+		t.Fatal("ctrl+w should return focus to the tree")
+	}
+}
+
+// ctrl+w works even while the SQL editor is in insert mode, where tab
+// just types indentation.
+func TestCtrlWSwapsFromEditorInsertMode(t *testing.T) {
+	m, _ := fixture(t)
+	press(t, m, "down", "enter") // connect
+	press(t, m, "tab", "]", "]") // SQL tab, editor focused
+	s := m.currentSQLSession(false)
+	press(t, m, "i") // insert mode
+	if s.editor.mode != edInsert {
+		t.Fatal("precondition: insert mode")
+	}
+	press(t, m, "ctrl+w")
+	if m.focusRight {
+		t.Fatal("ctrl+w should swap to the tree from insert mode")
+	}
+	press(t, m, "ctrl+w") // back into the workspace (SQL tab, editor)
+	if !m.focusRight || !s.editorFocused {
+		t.Fatal("ctrl+w should return to the workspace with the editor focused")
+	}
 }
 
 func TestDataGridPaging(t *testing.T) {
@@ -128,7 +159,7 @@ func TestDisconnectClearsGrid(t *testing.T) {
 		t.Fatal("precondition: grid loaded")
 	}
 	press(t, m, "tab") // back to tree (cursor still inside the connection)
-	press(t, m, "ctrl+c")
+	press(t, m, "d")
 	if m.grid.res != nil || m.grid.path != "" {
 		t.Fatalf("disconnect should clear the grid: %+v", m.grid)
 	}

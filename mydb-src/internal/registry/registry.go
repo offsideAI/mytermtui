@@ -4,6 +4,7 @@ package registry
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -218,4 +219,23 @@ func orJSON(s string) string {
 		return "{}"
 	}
 	return s
+}
+
+// ReadOnly reports the read_only flag in the connection's options JSON.
+func (c Connection) ReadOnly() bool {
+	var o struct {
+		ReadOnly bool `json:"read_only"`
+	}
+	if err := json.Unmarshal([]byte(c.Options), &o); err != nil {
+		return false
+	}
+	return o.ReadOnly
+}
+
+// OptionsJSON encodes the options column for the form.
+func OptionsJSON(readOnly bool) string {
+	if readOnly {
+		return `{"read_only":true}`
+	}
+	return "{}"
 }

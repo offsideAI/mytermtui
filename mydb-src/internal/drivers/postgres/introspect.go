@@ -177,10 +177,13 @@ func (c *conn) Roles(ctx context.Context) ([]dbx.RoleInfo, error) {
 		return nil, err
 	}
 	rows, err := p.Query(ctx, `
-		SELECT rolname, rolcanlogin, rolsuper
-		FROM pg_roles
-		WHERE rolname NOT LIKE 'pg\_%'
-		ORDER BY rolname`)
+		SELECT r.rolname, r.rolcanlogin, r.rolsuper,
+		       ARRAY(SELECT b.rolname FROM pg_auth_members mm
+		             JOIN pg_roles b ON b.oid = mm.roleid
+		             WHERE mm.member = r.oid ORDER BY b.rolname)
+		FROM pg_roles r
+		WHERE r.rolname NOT LIKE 'pg\_%'
+		ORDER BY r.rolname`)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +191,7 @@ func (c *conn) Roles(ctx context.Context) ([]dbx.RoleInfo, error) {
 	var out []dbx.RoleInfo
 	for rows.Next() {
 		var r dbx.RoleInfo
-		if err := rows.Scan(&r.Name, &r.CanLogin, &r.Super); err != nil {
+		if err := rows.Scan(&r.Name, &r.CanLogin, &r.Super, &r.MemberOf); err != nil {
 			return nil, err
 		}
 		out = append(out, r)

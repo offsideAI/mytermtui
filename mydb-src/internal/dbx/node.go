@@ -62,6 +62,7 @@ type NodeMeta struct {
 	Count     int    // group: child count (-1 until loaded)
 	CanLogin  bool   // role
 	Super     bool   // role
+	MemberOf  string // role: joined memberships
 	Owner     string // database/schema
 }
 

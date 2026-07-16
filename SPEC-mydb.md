@@ -77,9 +77,9 @@ myconsole's chrome, re-domained: tree on the left, a **tabbed workspace** on the
 
 - **Menu bar** (`m`/`F10`): File, Edit, View, Go, **Database** (connect, disconnect, backup, restore, maintenance, roles), **Commands** (the template catalog, §3.5), Help. Every item shows its live shortcut.
 - **Breadcrumb** — the selected node's path (`connection ▸ database ▸ schema ▸ object`) plus engine and connection-status glyph.
-- **Tree** (left) and **workspace** (right) — split by `split_ratio`, resized with `<`/`>`, toggled with `F3`/`ctrl+w`; `tab` moves focus between them, each side keeping its cursor.
+- **Tree** (left) and **workspace** (right) — split by `split_ratio` (default **0.50**), resized with `<`/`>`, toggled with `F3`/`P`; `tab`, `ctrl+w`, or `ctrl+o` moves focus between them, each side keeping its cursor. The tree's Details column sizes to its visible content, so a connection row's full `engine · host:port/db` target renders untruncated (no wrapping) whenever the pane can fit it.
 - **Job bar** — appears only while the job queue is active (mirrors the download bar).
-- **Hint bar** (`H` toggles) and **status bar** — as in myconsole; the status bar's right side shows running-query count, sort order, and the selected scope's object counts.
+- **Hint bar** (`H` toggles) and **status bar** — as in myconsole; the status bar's right side always carries the connection indicator (green `●` + name / red `●` disconnected) beside running-query count and the selected scope's object counts.
 
 ### 3.2 The tree
 
@@ -100,11 +100,16 @@ Top level is four fixed sections. **Local** and **Remote** hold the saved connec
   ▸ prod-pg       postgres ● host:5432/appdb
     ▸ public                       schema of the connection's OWN database
       ▸ Tables (34) / Views (6) / Indexes
-    ▸ Roles (5)                    only when the engine has roles
 ▸ Remote (Annex)                   same, for connected remote servers
+▸ Roles                            cluster roles, grouped per connected server
+  ▸ prod-pg       host:5432
+    admin         login · super
+    app_reader    login
 ```
 
-- **A saved connection is one database.** Expanding a Postgres connection shows *its configured database's* schemas plus the server's Roles group — never the server's other databases. That keeps the mental model honest: `prod-pg` *is* `appdb`, not the whole server.
+- **A saved connection is one database.** Expanding a Postgres connection shows *its configured database's* schemas — never the server's other databases. That keeps the mental model honest: `prod-pg` *is* `appdb`, not the whole server.
+- **Roles are a top-level view.** Roles belong to the cluster, not to any one connection string, so they never nest under a connection. The **Roles** section lists one entry per connected server (deduplicated by host:port, **labeled by the server's host** — e.g. `localhost` — never by a connection-string name; engines with the `Roles` capability only); expanding it loads the server's role list. Entries clear on disconnect/delete and refresh with `ctrl+r`.
+- **One active connection.** Connecting (`c`, or expanding a closed connection) first disconnects the previously connected database, releasing its server resources; its Annex and Roles entries and caches go with it (SQL buffers persist in their sessions). `d` disconnects explicitly. The status bar always carries a **prominent indicator**: green `●` plus the connection name while connected, red `●` `disconnected` otherwise.
 - **Annex sections** — connecting to a server with multiple databases (the `MultipleDatabases` capability) also enumerates its other databases into the matching Annex section: flat, sorted, deduplicated across connections to the same server, and excluding any database that already has its own saved connection. Annex databases browse with the source connection's credentials (schemas → tables → data grid), refresh with `ctrl+r`, and disappear when their source connection disconnects or is deleted. Promoting an annex database to a saved connection is just `B` with the same server details.
 - **Capability-shaped levels**: the tree builder consults the driver's capability flags (§4.2) — SQLite connections skip the schema/roles levels entirely and contribute nothing to the Annex. Future engines describe themselves the same way.
 - **Lazy loading**: expanding a node fires a command; children arrive as a message (generation-tagged so stale loads are dropped). Expanding a closed connection connects first (status `○`→`◐`→`●`, or `✗` with the error on the node).
@@ -137,7 +142,7 @@ Focusable (`tab`), tabbed (`[`/`]` switch tabs), context follows the selected tr
 
 ### 3.4 Connections and the registry sections
 
-- `B` (or *File → New Connection*) opens a **form modal**: an optional **URL field**, then name, engine, **locality (Local/Remote — the user chooses; mydb never guesses)**, then per-engine fields — SQLite: path (with tab completion); Postgres: host, port, database, user, password (masked), options (sslmode, read-only). Saving writes to the registry and the connection appears in its section.
+- `B` (or *File → New Connection*) opens a **form modal**: an optional **URL field**, then name, engine, **locality (Local/Remote — the user chooses; mydb never guesses)**, then per-engine fields — SQLite: path (with tab completion); Postgres: host, port, database, user, password (masked); plus an **Access** choice (read-write / read-only) for both engines. Saving writes to the registry and the connection appears in its section.
 - **Connection-string field** — paste a whole connection string into the URL field and press `enter`: `postgres://user:pass@host:5432/db`, a `key=value` DSN (`host=… port=… dbname=…`), a plain SQLite path, or a `sqlite://`/`file:` URL. mydb parses it into the individual fields (setting the engine) which stay visible and editable before saving; a malformed string errors inline without touching the fields. The parse also runs on save when the URL field is non-empty. The URL itself is not stored — the parts are.
 - **Password reveal** — passwords are masked by default everywhere. In the form, `ctrl+r` on the focused password field toggles it to plain text (for typing or verifying) and back; the form always opens masked. On a connection node, `p` reveals the saved password in the Info panel with a status-bar warning; it re-masks automatically after 10 seconds, on a second `p`, or when the connection is deleted. Nothing else ever displays a stored password.
 - `E` edits, `X` deletes (typed confirmation — deleting a saved connection also drops its history rows), on connection nodes.
@@ -174,7 +179,7 @@ The catalog lives in one data file (§4.1 `dbx/templates.go`), so adding a templ
   - **Medium** (CREATE/ALTER/GRANT/REVOKE, maintenance that rewrites data): a yes/no confirm previewing the SQL.
   - Multi-statement plans run in a transaction where the engine supports transactional DDL.
 - **Raw SQL typed in the editor runs as-is** — the editor is the expert path; feedback is the affected-row count, not a gate.
-- Connections can be marked **read-only** in their options; the driver then opens read-only (SQLite) or sets the session read-only (Postgres), and mutating UI actions are greyed out.
+- Connections can be marked **read-only** via the form's Access field; the driver then opens read-only (SQLite `mode=ro`) or sets the session read-only (Postgres), the tree shows the `⏸` glyph, and every UI-generated plan is refused before its confirmation with a status-bar note. Raw SQL in the editor still reaches the read-only session (the engine rejects writes).
 
 ### 3.7 Keybindings
 
@@ -183,12 +188,12 @@ Same dual philosophy as the siblings (arrow keys + vim letters, everything rebin
 | Group | Keys |
 |---|---|
 | **Move** | `↑↓`/`kj` cursor · `enter`/`→` expand (connects if needed), `←` collapse / parent row · `g`/`G` top/bottom · `pgup`/`pgdn` page · `bksp` parent |
-| **Panels** | `tab` tree ↔ workspace · `[` `]` workspace tabs · `<`/`>` resize · `ctrl+w`/`F3` toggle panel |
+| **Panels** | `tab`/`ctrl+w`/`ctrl+o` tree ↔ workspace (the ctrl combos work in the editor's insert mode too; `ctrl+o` is the fallback where a terminal/tmux eats `ctrl+w`) · `[` `]` workspace tabs · `<`/`>` resize · `F3`/`P` toggle panel |
 | **Find** | `f` filter · `F` fuzzy find · `s` sort · `:` go to node path · `ctrl+r` refresh node |
-| **Connections** | `B` new · `E` edit · `X` delete · `c` connect · `ctrl+c` disconnect · `p` reveal password (10s) · `ctrl+r` reveal in form |
+| **Connections** | `B` new · `E` edit · `X` delete · `c` connect (disconnects the previous) · `d` disconnect · `p` reveal password (10s) · `ctrl+r` reveal in form |
 | **SQL tab** | `ctrl+r`/`:w` run · `esc` cancel running · `e` explain · `ctrl+h` history · vim keys per the editor |
 | **Data tab** | `J`/`K` next/prev page · `h`/`l` column scroll · `enter` full cell value · `y` copy cell · `Y` copy row |
-| **Admin** | `C` commands menu · `d` backup · `r` restore · `M` maintenance · `I` info |
+| **Admin** | `C` commands menu · `M` maintenance · `I` info · backup/restore land in M5 |
 | **Jobs** | `Q` jobs tab · `c` cancel item · `C` cancel all · `p` pause · `K`/`J` reorder · `x` clear finished |
 | **App** | `m`/`F10` menus · `?`/`F1` help · `H` hint bar · `ctrl+q` quit |
 
@@ -360,7 +365,7 @@ CREATE TABLE schema_migrations ( version INTEGER PRIMARY KEY );
 [general]
 show_hints   = true
 show_panel   = true          # workspace on launch
-split_ratio  = 0.35
+split_ratio  = 0.50
 confirm_medium = true        # y/n confirms for Medium-danger ops (High is never disableable)
 
 [query]

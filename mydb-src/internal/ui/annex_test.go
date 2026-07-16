@@ -114,7 +114,7 @@ func TestAnnexClearsOnDisconnect(t *testing.T) {
 		t.Fatal("precondition: annex populated")
 	}
 	m.cursor = indexOf2(t, m, "pgc")
-	press(t, m, "ctrl+c")
+	press(t, m, "d")
 	if contains(visible(m), "sibling_a") {
 		t.Fatalf("disconnect must clear the connection's annex entries: %v", visible(m))
 	}

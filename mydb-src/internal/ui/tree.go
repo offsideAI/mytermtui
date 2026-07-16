@@ -20,6 +20,7 @@ const (
 	locLocalAnnex  = "local-annex"
 	locRemote      = "remote"
 	locRemoteAnnex = "remote-annex"
+	locRoles       = "roles" // cluster roles, grouped per connected server
 )
 
 func sectionNodes() []dbx.Node {
@@ -34,6 +35,7 @@ func sectionNodes() []dbx.Node {
 		mk(locLocalAnnex, "Local (Annex)"),
 		mk(locRemote, "Remote"),
 		mk(locRemoteAnnex, "Remote (Annex)"),
+		mk(locRoles, "Roles"),
 	}
 }
 
@@ -119,12 +121,22 @@ func schemaNodes(db dbx.Node, schemas []dbx.SchemaInfo) []dbx.Node {
 	return out
 }
 
-func rolesGroup(conn dbx.Node) dbx.Node {
+// rolesServerNode is one connected server inside the top-level Roles
+// section — roles are cluster-wide, so they group by server, never
+// under a connection string.
+func rolesServerNode(src registry.Connection) dbx.Node {
 	return dbx.Node{
-		Kind: dbx.KGroup, Group: dbx.GroupRoles, Name: "Roles",
-		Path: conn.ChildPath("g:roles"), HasChildren: true, ConnID: conn.ConnID,
-		Meta: dbx.NodeMeta{Count: -1},
+		// Labeled by the HOST — a server owns its roles; a connection-
+		// string name like "hopscotchgo" would misattribute them (§3.2).
+		Kind: dbx.KGroup, Group: dbx.GroupRoles, Name: src.Host,
+		Path:        rolesServerPath(src.ID),
+		HasChildren: true, ConnID: src.ID,
+		Meta: dbx.NodeMeta{Count: -1, Target: fmt.Sprintf("%s:%d", src.Host, src.Port)},
 	}
+}
+
+func rolesServerPath(connID int64) string {
+	return fmt.Sprintf("%s/conn:%d", dbx.SectionPath(locRoles), connID)
 }
 
 func roleNodes(group dbx.Node, roles []dbx.RoleInfo) []dbx.Node {
@@ -133,7 +145,8 @@ func roleNodes(group dbx.Node, roles []dbx.RoleInfo) []dbx.Node {
 		out = append(out, dbx.Node{
 			Kind: dbx.KRole, Name: r.Name, Path: group.ChildPath("r:" + r.Name),
 			ConnID: group.ConnID,
-			Meta:   dbx.NodeMeta{CanLogin: r.CanLogin, Super: r.Super},
+			Meta: dbx.NodeMeta{CanLogin: r.CanLogin, Super: r.Super,
+				MemberOf: strings.Join(r.MemberOf, ", ")},
 		})
 	}
 	return out
