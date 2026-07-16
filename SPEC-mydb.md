@@ -127,8 +127,8 @@ Focusable (`tab`), tabbed (`[`/`]` switch tabs), context follows the selected tr
 
 - **Info** — scrollable summary: object DDL (`CREATE TABLE …` reconstructed or fetched), column/index/FK details, size and row estimates; for connections, server version and settings; for roles, memberships and grants.
 - **Data** (tables/views) — the read-only grid. Pages of `page_size` rows (default 500) with a **mandatory stable order** (§1.7); `J`/`K` (or scrolling past the edge) page forward/back; `h`/`l` scroll columns horizontally with the header row pinned; `g`/`G` first/last loaded row. Cells render NULLs as a dim `␀`, byte arrays as `0x…` previews, control characters sanitized, wide cells truncated with `…` (full value in a popup on `enter`). Footer: `rows 501–1000 of ~12,340 · 8 ms`.
-- **SQL** — the myconsole vim editor (verbatim: modes, motions, counts, undo, search) on top, a results grid below, split resizable. One buffer per connection, surviving tab switches.
-  - `ctrl+r` (any mode) or `:w` runs the **visual selection if one exists, else the whole buffer**, against the node's connection.
+- **SQL** — the myconsole vim editor (modes, motions, counts, undo, search; redo is `U` since `ctrl+r` runs, and `:q` parks focus on the tree — the buffer persists in its session) on top, a results grid below. One buffer per connection, surviving tab switches.
+  - `ctrl+r` (any mode), `:w`, or `f5` runs the **whole buffer** against the node's connection. (This vim subset has no visual mode; run-selection arrives with it.)
   - `esc` on a running query offers cancellation (server-side cancel on Postgres, interrupt on SQLite); starting a new query while one runs on the same connection offers "cancel and run".
   - Results show columns/rows (same grid), elapsed time, statements executed, and total rows affected; errors render inline with position/hint when the engine provides them. Result sets are capped at `max_rows` (default 10,000) with a `truncated` marker.
   - `e` wraps the buffer/selection in the engine's EXPLAIN form (`EXPLAIN QUERY PLAN` / `EXPLAIN (ANALYZE, BUFFERS)` — ANALYZE variant confirms first, since it executes).

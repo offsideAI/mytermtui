@@ -91,8 +91,11 @@ type Model struct {
 	ratio      float64
 	hintsOn    bool
 	focusRight bool // keys route to the workspace panel
-	tab        int  // active workspace tab (tabInfo/tabData)
+	tab        int  // active workspace tab (tabInfo/tabData/tabSQL)
 	grid       gridState
+
+	sqlSessions map[int64]*sqlSession // per-connection SQL tabs
+	qSeq        int                   // query id sequence
 
 	spinning bool // a spinner tick is scheduled
 	tickN    int
@@ -129,6 +132,7 @@ func New(cfg config.Config, reg *registry.Registry) *Model {
 		connErr:     map[int64]string{},
 		serverInfo:  map[int64][]dbx.KV{},
 		annexDBs:    map[int64][]dbx.DBInfo{},
+		sqlSessions: map[int64]*sqlSession{},
 		roots:       sectionNodes(),
 		expanded:    map[string]bool{},
 		childCache:  map[string][]dbx.Node{},
@@ -146,6 +150,12 @@ func New(cfg config.Config, reg *registry.Registry) *Model {
 
 func (m *Model) Init() tea.Cmd {
 	return loadConnsCmd(m.reg)
+}
+
+// InstallDriver overrides an engine's driver — used by the screenshot
+// harness and tests to substitute the in-memory fake.
+func (m *Model) InstallDriver(engine string, d dbx.Driver) {
+	m.drivers[engine] = d
 }
 
 // --- messages ----------------------------------------------------------
@@ -328,16 +338,26 @@ func (m *Model) note(level statusLevel, text string) tea.Cmd {
 	return tea.Tick(4*time.Second, func(time.Time) tea.Msg { return statusExpireMsg{id} })
 }
 
-// ensureSpin keeps one spinner tick scheduled while a connect is live.
+// ensureSpin keeps one spinner tick scheduled while a connect or a
+// query is live.
 func (m *Model) ensureSpin() tea.Cmd {
 	if m.spinning {
 		return nil
 	}
+	busy := false
 	for _, st := range m.state {
 		if st == connOpening {
-			m.spinning = true
-			return spinTickCmd()
+			busy = true
 		}
+	}
+	for _, s := range m.sqlSessions {
+		if s.running {
+			busy = true
+		}
+	}
+	if busy {
+		m.spinning = true
+		return spinTickCmd()
 	}
 	return nil
 }
@@ -416,18 +436,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.grid.err = ""
-		m.grid.res = msg.res
+		m.grid.setResult(msg.res)
 		m.grid.page = msg.page
-		if m.grid.row >= len(msg.res.Rows) {
-			m.grid.row = len(msg.res.Rows) - 1
-		}
-		if m.grid.row < 0 {
-			m.grid.row = 0
-		}
-		if m.grid.col >= len(msg.res.Columns) {
-			m.grid.col = 0
-			m.grid.colOff = 0
-		}
 		return m, nil
 
 	case copyDoneMsg:
@@ -435,6 +445,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.note(levelErr, "copy: "+msg.err.Error())
 		}
 		return m, m.note(levelOK, "copied "+msg.what)
+
+	case queryDoneMsg:
+		return m, m.absorbQueryDone(msg)
+
+	case historyLoadedMsg:
+		if hm, ok := m.modal.(*HistoryModal); ok {
+			hm.absorb(msg)
+		}
+		return m, nil
 
 	case regDoneMsg:
 		if msg.err != nil {
@@ -508,6 +527,12 @@ func (m *Model) absorbConns(conns []registry.Connection) {
 	for id := range m.annexDBs {
 		if !seen[id] {
 			delete(m.annexDBs, id)
+		}
+	}
+	for id, s := range m.sqlSessions {
+		if !seen[id] {
+			m.cancelSession(s)
+			delete(m.sqlSessions, id)
 		}
 	}
 	m.rebuildAnnex()
@@ -598,7 +623,7 @@ func (m *Model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Workspace focus: keys go to the panel until tab/esc returns.
 	if m.focusRight {
-		return m, m.workspaceKey(key)
+		return m, m.workspaceKey(msg)
 	}
 
 	// Filter input mode.

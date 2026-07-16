@@ -28,6 +28,8 @@ func (Driver) Capabilities() dbx.Capabilities {
 		Roles:             true,
 		TransactionalDDL:  true,
 		ServerCancel:      true,
+		Explain:           "EXPLAIN ",
+		ExplainAnalyze:    "EXPLAIN (ANALYZE, BUFFERS) ",
 	}
 }
 

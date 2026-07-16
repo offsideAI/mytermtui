@@ -12,19 +12,45 @@ import (
 	"github.com/offsideai/mydb/internal/dbx"
 )
 
-// gridState is the read-only data viewer bound to one table/view.
+// gridView is the shared read-only results view: one result set plus a
+// cell cursor and horizontal scroll. The Data tab and the SQL tab's
+// results pane both embed it.
+type gridView struct {
+	res    *dbx.Result
+	row    int // cursor row within the loaded rows
+	col    int // cursor column
+	colOff int // first visible column
+}
+
+// setResult installs a fresh result set, clamping the cursor.
+func (gv *gridView) setResult(res *dbx.Result) {
+	gv.res = res
+	if res == nil {
+		gv.row, gv.col, gv.colOff = 0, 0, 0
+		return
+	}
+	if gv.row >= len(res.Rows) {
+		gv.row = len(res.Rows) - 1
+	}
+	if gv.row < 0 {
+		gv.row = 0
+	}
+	if gv.col >= len(res.Columns) {
+		gv.col = 0
+		gv.colOff = 0
+	}
+}
+
+// gridState is the Data tab: a gridView bound to one table/view.
 type gridState struct {
+	gridView
 	path    string // tree node the grid is bound to
 	ref     dbx.ObjectRef
 	connID  int64
 	title   string
 	rowsEst int64
 
-	res     *dbx.Result
 	page    int // 0-based
-	row     int // cursor row within the loaded page
-	col     int // cursor column
-	colOff  int // first visible column
 	loading bool
 	err     string
 }
@@ -84,39 +110,71 @@ func (m *Model) maybeLoadGrid() tea.Cmd {
 	return pageCmd(conn, n.Path, n.Ref, 0, m.cfg.Query.PageSize)
 }
 
-// gridKey handles keys while the workspace is focused on the Data tab.
+// gridNavKey handles the navigation/copy/popup keys shared by every
+// gridView. The second return reports whether the key was consumed.
+func (m *Model) gridNavKey(gv *gridView, title, key string) (tea.Cmd, bool) {
+	if gv.res == nil {
+		return nil, false
+	}
+	rows, cols := gv.res.Rows, gv.res.Columns
+	switch key {
+	case "down", "j":
+		if gv.row < len(rows)-1 {
+			gv.row++
+		}
+	case "up", "k":
+		if gv.row > 0 {
+			gv.row--
+		}
+	case "g":
+		gv.row = 0
+	case "G":
+		if len(rows) > 0 {
+			gv.row = len(rows) - 1
+		}
+	case "left", "h":
+		if gv.col > 0 {
+			gv.col--
+		}
+		if gv.col < gv.colOff {
+			gv.colOff = gv.col
+		}
+	case "right", "l":
+		if gv.col < len(cols)-1 {
+			gv.col++
+		}
+	case "enter":
+		if v, colName, ok := gridCell(gv); ok {
+			m.modal = &InfoModal{Title: title + "." + colName, Lines: cellLines(v)}
+		}
+	case "y":
+		if v, colName, ok := gridCell(gv); ok {
+			return copyCmd("cell "+colName, v.S), true
+		}
+	case "Y":
+		if gv.row < len(rows) {
+			parts := make([]string, len(rows[gv.row]))
+			for i, v := range rows[gv.row] {
+				parts[i] = v.S
+			}
+			return copyCmd("row", strings.Join(parts, "\t")), true
+		}
+	default:
+		return nil, false
+	}
+	return nil, true
+}
+
+// gridKey handles keys for the Data tab: shared navigation plus paging.
 func (m *Model) gridKey(key string) tea.Cmd {
 	g := &m.grid
+	if cmd, handled := m.gridNavKey(&g.gridView, g.title, key); handled {
+		return cmd
+	}
 	if g.res == nil {
 		return nil
 	}
-	rows, cols := g.res.Rows, g.res.Columns
 	switch key {
-	case "down", "j":
-		if g.row < len(rows)-1 {
-			g.row++
-		}
-	case "up", "k":
-		if g.row > 0 {
-			g.row--
-		}
-	case "g":
-		g.row = 0
-	case "G":
-		if len(rows) > 0 {
-			g.row = len(rows) - 1
-		}
-	case "left", "h":
-		if g.col > 0 {
-			g.col--
-		}
-		if g.col < g.colOff {
-			g.colOff = g.col
-		}
-	case "right", "l":
-		if g.col < len(cols)-1 {
-			g.col++
-		}
 	case "J", "pgdown":
 		if g.res.Truncated {
 			return m.loadGridPage(g.page + 1)
@@ -124,25 +182,6 @@ func (m *Model) gridKey(key string) tea.Cmd {
 	case "K", "pgup":
 		if g.page > 0 {
 			return m.loadGridPage(g.page - 1)
-		}
-	case "enter":
-		if v, colName, ok := m.gridCell(); ok {
-			m.modal = &InfoModal{
-				Title: g.title + "." + colName,
-				Lines: cellLines(v),
-			}
-		}
-	case "y":
-		if v, colName, ok := m.gridCell(); ok {
-			return copyCmd("cell "+colName, v.S)
-		}
-	case "Y":
-		if g.row < len(rows) {
-			parts := make([]string, len(rows[g.row]))
-			for i, v := range rows[g.row] {
-				parts[i] = v.S
-			}
-			return copyCmd("row", strings.Join(parts, "\t"))
 		}
 	}
 	return nil
@@ -159,12 +198,11 @@ func (m *Model) loadGridPage(page int) tea.Cmd {
 	return pageCmd(conn, g.path, g.ref, page, m.cfg.Query.PageSize)
 }
 
-func (m *Model) gridCell() (dbx.Value, string, bool) {
-	g := &m.grid
-	if g.res == nil || g.row >= len(g.res.Rows) || g.col >= len(g.res.Columns) {
+func gridCell(gv *gridView) (dbx.Value, string, bool) {
+	if gv.res == nil || gv.row >= len(gv.res.Rows) || gv.col >= len(gv.res.Columns) {
 		return dbx.Value{}, "", false
 	}
-	return g.res.Rows[g.row][g.col], g.res.Columns[g.col].Name, true
+	return gv.res.Rows[gv.row][gv.col], gv.res.Columns[gv.col].Name, true
 }
 
 // cellLines wraps a full cell value for the popup.
@@ -215,7 +253,7 @@ func (m *Model) renderGrid(width, height int, focused bool) []string {
 	case g.res == nil:
 		out = append(out, blank(" "+t.Dim.Render("loading…")))
 	default:
-		out = m.gridRows(width, height-1, focused)
+		out = m.gridRows(&g.gridView, width, height-1, focused)
 		out = append(out, blank(m.gridFooter(width)))
 	}
 	for len(out) < height {
@@ -225,13 +263,12 @@ func (m *Model) renderGrid(width, height int, focused bool) []string {
 }
 
 // gridWidths sizes the visible columns from colOff.
-func (m *Model) gridWidths(width int) []int {
-	g := &m.grid
-	cols := g.res.Columns
+func gridWidths(gv *gridView) []int {
+	cols := gv.res.Columns
 	widths := make([]int, len(cols))
 	for ci := range cols {
 		w := lipgloss.Width(cols[ci].Name)
-		for _, row := range g.res.Rows {
+		for _, row := range gv.res.Rows {
 			if cw := lipgloss.Width(sanitize(row[ci].S)); cw > w {
 				w = cw
 			}
@@ -247,36 +284,35 @@ func (m *Model) gridWidths(width int) []int {
 	return widths
 }
 
-func (m *Model) gridRows(width, bodyH int, focused bool) []string {
+func (m *Model) gridRows(gv *gridView, width, bodyH int, focused bool) []string {
 	t := m.theme
-	g := &m.grid
-	widths := m.gridWidths(width)
+	widths := gridWidths(gv)
 
 	// Keep the cursor column visible: advance colOff until it fits.
-	if g.col < g.colOff {
-		g.colOff = g.col
+	if gv.col < gv.colOff {
+		gv.colOff = gv.col
 	}
 	for {
 		used := 1
 		fits := false
-		for ci := g.colOff; ci < len(widths); ci++ {
+		for ci := gv.colOff; ci < len(widths); ci++ {
 			used += widths[ci] + 2
-			if ci == g.col {
+			if ci == gv.col {
 				fits = used <= width
 				break
 			}
 		}
-		if fits || g.colOff >= g.col {
+		if fits || gv.colOff >= gv.col {
 			break
 		}
-		g.colOff++
+		gv.colOff++
 	}
 
 	renderLine := func(cells []string, styles []lipgloss.Style) string {
 		var b strings.Builder
 		b.WriteString(" ")
 		used := 1
-		for i := g.colOff; i < len(widths) && used < width; i++ {
+		for i := gv.colOff; i < len(widths) && used < width; i++ {
 			w := widths[i]
 			if used+w > width {
 				w = width - used
@@ -298,13 +334,13 @@ func (m *Model) gridRows(width, bodyH int, focused bool) []string {
 		return s
 	}
 
-	cols := g.res.Columns
+	cols := gv.res.Columns
 	headCells := make([]string, len(cols))
 	headStyles := make([]lipgloss.Style, len(cols))
 	for i, c := range cols {
 		headCells[i] = c.Name
 		headStyles[i] = t.Header
-		if i == g.col && focused {
+		if i == gv.col && focused {
 			headStyles[i] = t.Header.Bold(true)
 		}
 	}
@@ -312,11 +348,11 @@ func (m *Model) gridRows(width, bodyH int, focused bool) []string {
 
 	// Keep the cursor row on screen.
 	rowOff := 0
-	if g.row >= bodyH-1 {
-		rowOff = g.row - (bodyH - 2)
+	if gv.row >= bodyH-1 {
+		rowOff = gv.row - (bodyH - 2)
 	}
-	for ri := rowOff; ri < len(g.res.Rows) && len(out) < bodyH; ri++ {
-		row := g.res.Rows[ri]
+	for ri := rowOff; ri < len(gv.res.Rows) && len(out) < bodyH; ri++ {
+		row := gv.res.Rows[ri]
 		cells := make([]string, len(row))
 		styles := make([]lipgloss.Style, len(row))
 		for i, v := range row {
@@ -332,12 +368,12 @@ func (m *Model) gridRows(width, bodyH int, focused bool) []string {
 			default:
 				styles[i] = t.Row
 			}
-			if focused && ri == g.row && i == g.col {
+			if focused && ri == gv.row && i == gv.col {
 				styles[i] = t.Cursor
 			}
 		}
 		line := renderLine(cells, styles)
-		if focused && ri == g.row {
+		if focused && ri == gv.row {
 			// Whole-row hint under the cell cursor.
 			line = strings.Replace(line, " ", ">", 1)
 		}

@@ -28,6 +28,7 @@ func (Driver) Capabilities() dbx.Capabilities {
 	return dbx.Capabilities{
 		TransactionalDDL: true,
 		ServerCancel:     true, // context cancellation → sqlite3_interrupt
+		Explain:          "EXPLAIN QUERY PLAN ",
 	}
 }
 

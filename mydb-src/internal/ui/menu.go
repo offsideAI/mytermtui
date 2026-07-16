@@ -37,6 +37,9 @@ var menus = []menuDef{
 		{label: "Connect", action: ActConnect},
 		{label: "Disconnect", action: ActDisconnect},
 		sep(),
+		{label: "Run SQL Buffer", action: ActRunQuery},
+		{label: "Query History…", action: ActHistory},
+		sep(),
 		{label: "Reveal Password (10s)", action: ActRevealSecret},
 	}},
 	{"Help", []menuItem{

@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -154,5 +155,51 @@ func TestReadPageStable(t *testing.T) {
 	}
 	if _, err := c.ReadPage(ctx, dbx.ObjectRef{Schema: ref.Schema, Name: "nope"}, dbx.PageReq{Limit: 5}); err == nil {
 		t.Fatal("unknown relation must error")
+	}
+}
+
+func TestQueryScriptPG(t *testing.T) {
+	c := testConn(t)
+	ctx := context.Background()
+	ref := fixtureTable(t, c)
+	q := quoteIdent(ref.Schema) + ".nums"
+
+	res, err := c.Query(ctx, "", fmt.Sprintf(`
+		UPDATE %s SET label = 'zzz' WHERE id = 1;
+		INSERT INTO %s (id, label) VALUES (100, 'new');
+		SELECT id, label FROM %s WHERE id IN (1, 100) ORDER BY id;
+	`, q, q, q), dbx.QueryReq{MaxRows: 100})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Stmts != 3 || res.Affected != 2 {
+		t.Errorf("stmts=%d affected=%d, want 3/2", res.Stmts, res.Affected)
+	}
+	if len(res.Rows) != 2 || res.Rows[0][1].S != "zzz" || res.Rows[1][0].S != "100" {
+		t.Errorf("last result set wrong: %+v", res.Rows)
+	}
+}
+
+func TestQueryErrorPositionPG(t *testing.T) {
+	c := testConn(t)
+	_, err := c.Query(context.Background(), "", "SELECT 1;\nSELEC 2;", dbx.QueryReq{})
+	if err == nil {
+		t.Fatal("bad SQL must error")
+	}
+	if !strings.Contains(err.Error(), "line 2") {
+		t.Errorf("error should carry the position, got: %v", err)
+	}
+}
+
+func TestQueryCancelPG(t *testing.T) {
+	c := testConn(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	if _, err := c.Query(ctx, "", "SELECT pg_sleep(30)", dbx.QueryReq{}); err == nil {
+		t.Fatal("sleeping query should be cancelled")
+	}
+	if time.Since(start) > 5*time.Second {
+		t.Fatalf("server-side cancel took %v", time.Since(start))
 	}
 }

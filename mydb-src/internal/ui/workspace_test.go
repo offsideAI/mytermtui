@@ -27,9 +27,18 @@ func TestWorkspaceFocusAndTabs(t *testing.T) {
 		t.Fatalf("] should switch to Data, tab=%d", m.tab)
 	}
 	press(t, m, "]")
+	if m.tab != tabSQL {
+		t.Fatalf("] should switch to SQL, tab=%d", m.tab)
+	}
+	press(t, m, "]")
 	if m.tab != tabInfo {
 		t.Fatalf("] should wrap back to Info, tab=%d", m.tab)
 	}
+	press(t, m, "[", "[") // back to Data via SQL
+	if m.tab != tabData {
+		t.Fatalf("[ should step back to Data, tab=%d", m.tab)
+	}
+	press(t, m, "[")
 	press(t, m, "tab")
 	if m.focusRight {
 		t.Fatal("tab should return focus to the tree")

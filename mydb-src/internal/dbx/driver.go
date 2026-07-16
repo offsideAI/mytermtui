@@ -25,6 +25,10 @@ type Capabilities struct {
 	Roles             bool
 	TransactionalDDL  bool
 	ServerCancel      bool
+	// Explain prefixes wrap a script for plan output; ExplainAnalyze is
+	// "" when the engine has no executing variant.
+	Explain        string
+	ExplainAnalyze string
 }
 
 // ConnConfig is a resolved connection: registry row plus secret.
@@ -48,6 +52,11 @@ type Conn interface {
 	// chosen by the driver (PK → rowid/ctid → first column), so paging
 	// never shuffles rows. Read-only by construction.
 	ReadPage(ctx context.Context, ref ObjectRef, pr PageReq) (*Result, error)
+	// Query runs a user script (possibly multiple statements) exactly as
+	// written. It returns the last result set plus totals; cancellation
+	// arrives via ctx (server-side cancel / interrupt per engine). The
+	// db selects which database to run against ("" = the connection's own).
+	Query(ctx context.Context, db, sql string, req QueryReq) (*Result, error)
 }
 
 // Introspector lists the objects the tree shows. Methods behind a false

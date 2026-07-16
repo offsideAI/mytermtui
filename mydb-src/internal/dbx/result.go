@@ -33,12 +33,14 @@ type Column struct {
 	TypeName string
 }
 
-// Result is a page of rows (data viewer) or a statement's output (query
-// runner, M3).
+// Result is a page of rows (data viewer) or a script's output (query
+// runner). For multi-statement scripts it carries the LAST result set
+// plus the statement count and total affected rows (spec v1 decision).
 type Result struct {
 	Columns   []Column
 	Rows      [][]Value
 	Affected  int64
+	Stmts     int // statements executed (0 for page reads)
 	Elapsed   time.Duration
 	Truncated bool // more rows exist beyond the requested cap
 }
@@ -48,6 +50,11 @@ type Result struct {
 type PageReq struct {
 	Offset int
 	Limit  int
+}
+
+// QueryReq bounds a script execution.
+type QueryReq struct {
+	MaxRows int // cap on returned rows; Result.Truncated marks overflow
 }
 
 // cellByteCap bounds how much of a huge cell is stringified; the rest is

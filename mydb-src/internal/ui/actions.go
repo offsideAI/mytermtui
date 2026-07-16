@@ -70,6 +70,18 @@ func (m *Model) dispatch(act Action) tea.Cmd {
 	case ActRevealSecret:
 		return m.toggleReveal()
 
+	case ActRunQuery:
+		s := m.currentSQLSession(true)
+		if s == nil {
+			return m.note(levelWarn, "select a connection first")
+		}
+		m.panelOn = true
+		m.focusRight = true
+		m.tab = tabSQL
+		return m.runSession(s, string(s.editor.Content()))
+	case ActHistory:
+		return m.openHistory()
+
 	case ActSwapPane:
 		return m.swapFocus()
 	case ActTabNext:

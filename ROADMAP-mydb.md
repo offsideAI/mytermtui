@@ -6,7 +6,7 @@ A working breakdown of [SPEC-mydb.md](SPEC-mydb.md) into **Epics → Stories →
 |---|---|---|---|
 | M1 | [E1](#epic-e1--skeleton-registry-sqlite-browse-m1-) | Skeleton, registry, SQLite browse | 🟢 verified on-device (2026-07-15) |
 | M2 | [E2](#epic-e2--data-grid--postgresql-m2-) | Data grid + PostgreSQL | 🟢 verified on-device (2026-07-15) — one refinement open (E2.S1.T2) |
-| M3 | [E3](#epic-e3--sql-runner-m3-) | SQL runner | ⬜ not started |
+| M3 | [E3](#epic-e3--sql-runner-m3-) | SQL runner | 🟢 verified on-device (2026-07-15) |
 | M4 | [E4](#epic-e4--admin--safety-m4-) | Admin + safety | ⬜ not started |
 | M5 | [E5](#epic-e5--jobs-backup--restore-m5-) | Jobs: backup & restore | ⬜ not started |
 
@@ -110,36 +110,38 @@ A working breakdown of [SPEC-mydb.md](SPEC-mydb.md) into **Epics → Stories →
 
 ---
 
-## Epic E3 — SQL runner (M3) ⬜
+## Epic E3 — SQL runner (M3) 🟢
 
 > Write and run SQL in the embedded vim editor, with cancellation, EXPLAIN, and persistent history. *(Spec §3.3 SQL tab, §4.3.)*
+>
+> 🟢 2026-07-15: milestone shipped and verified on-device — a pty session typed a query in the vim editor, ran it with `ctrl+r`, showed the results grid (`2 row(s) · 1 stmt(s)`), and the run landed in `query_history`. Driver query/cancel paths tested against SQLite and a live PostgreSQL 16 (server-side cancel < 1s).
 
-### Story E3.S1 — Embedded editor ⬜
+### Story E3.S1 — Embedded editor ✅
 *The myconsole vim editor lives in the SQL tab.*
-- ⬜ E3.S1.T1 — Port `editor.go` verbatim (+ its tests); `sql_wire.go` replaces file I/O
-- ⬜ E3.S1.T2 — One buffer per connection, surviving tab switches; editor above, results below, resizable split
+- ✅ E3.S1.T1 — Ported `editor.go` (+ its tests); `sql_wire.go` replaces file I/O. Deviations: redo is `U` (`ctrl+r` runs), `:q` parks focus (the buffer persists in its session)
+- ✅ E3.S1.T2 — One buffer per connection, surviving tab switches; editor above results (55/45 split); focus cycles editor → results → tree via `tab`
 
-### Story E3.S2 — Execution & cancellation ⬜
+### Story E3.S2 — Execution & cancellation ✅
 *Queries run off the update loop and can always be stopped.* (§4.3 concurrency lanes)
-- ⬜ E3.S2.T1 — `runQueryCmd` → `queryDoneMsg`; `ctrl+r`/`:w` run selection-or-buffer
-- ⬜ E3.S2.T2 — Per-connection runner: one interactive query per connection, cancel map on the model, `esc` cancels (pg server-side cancel / sqlite interrupt), "cancel and run" confirm
-- ⬜ E3.S2.T3 — Multi-statement scripts: last result set + statement count + total affected (per spec v1 decision)
+- ✅ E3.S2.T1 — `runSession` → `queryDoneMsg`; `ctrl+r` (any mode), `:w`, and `f5` run the whole buffer (no visual mode yet, so no selection runs — spec updated)
+- ✅ E3.S2.T2 — Per-connection runner: one interactive query per connection, per-session cancel, `esc` on results cancels (pg server-side cancel / sqlite interrupt), "cancel and run" confirm
+- ✅ E3.S2.T3 — Multi-statement scripts via `dbx.SplitStatements` (SQLite) / simple-protocol multi-result (pg): last result set + statement count + total affected
 
-### Story E3.S3 — Results ⬜
+### Story E3.S3 — Results ✅
 *I see rows, timing, and precise errors.*
-- ⬜ E3.S3.T1 — Results reuse the grid; elapsed time, affected rows, `max_rows` cap with truncated marker
-- ⬜ E3.S3.T2 — Inline errors with position/hint from `pgconn.PgError` where available
-- ⬜ E3.S3.T3 — `e` EXPLAIN via engine dialect (`EXPLAIN QUERY PLAN` / `EXPLAIN (ANALYZE, BUFFERS)`, ANALYZE confirms first)
+- ✅ E3.S3.T1 — Results reuse the shared `gridView`; elapsed time, affected rows, `max_rows` cap with truncated marker
+- ✅ E3.S3.T2 — Inline errors with line:col position, detail, and hint from `pgconn.PgError`
+- ✅ E3.S3.T3 — `e`/`E` EXPLAIN via capability prefixes (`EXPLAIN QUERY PLAN` / `EXPLAIN (ANALYZE, BUFFERS)`, ANALYZE confirms first; absent on SQLite)
 
-### Story E3.S4 — Query history ⬜
+### Story E3.S4 — Query history ✅
 *Everything I run is searchable later.* (§4.4)
-- ⬜ E3.S4.T1 — Fire-and-forget appends to `registry.query_history`, pruned to `history_limit`
-- ⬜ E3.S4.T2 — `ctrl+h` history modal: fuzzy search, connection scope toggle, `enter` loads into the editor
+- ✅ E3.S4.T1 — Every finished run (success or failure) appends to `registry.query_history`, pruned to `history_limit`
+- ✅ E3.S4.T2 — `ctrl+h` history modal: fuzzy subsequence search, `ctrl+t` connection/all scope toggle, `enter` loads into the editor
 
-### Story E3.S5 — Screenshot harness ⬜
+### Story E3.S5 — Screenshot harness ✅
 *Docs and golden frames come from the real model.*
-- ⬜ E3.S5.T1 — `dbx/fake` in-memory driver
-- ⬜ E3.S5.T2 — `cmd/screenshot` port driving the fake driver; golden-frame tests
+- ✅ E3.S5.T1 — `internal/dbx/fake` in-memory multi-database driver (also powers the annex/SQL headless tests)
+- ✅ E3.S5.T2 — `cmd/screenshot` drives the real Model headlessly over a temp fixture + fake driver; five scenes with light golden assertions in `go test`
 
 ---
 

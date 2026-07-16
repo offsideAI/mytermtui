@@ -24,6 +24,9 @@ const (
 	ActDeleteConn   Action = "delete_connection"
 	ActRevealSecret Action = "reveal_password"
 
+	ActRunQuery Action = "run_query"
+	ActHistory  Action = "query_history"
+
 	ActSwapPane   Action = "swap_pane"
 	ActTabNext    Action = "tab_next"
 	ActTabPrev    Action = "tab_prev"
@@ -57,6 +60,9 @@ var defaultBindings = map[Action][]string{
 	ActEditConn:     {"E"},
 	ActDeleteConn:   {"X"},
 	ActRevealSecret: {"p"},
+
+	ActRunQuery: {"f5"},
+	ActHistory:  {"ctrl+h"},
 
 	ActSwapPane:   {"tab"},
 	ActTabNext:    {"]"},
@@ -124,6 +130,7 @@ type helpSection struct {
 var helpSections = []helpSection{
 	{"Navigate", []Action{ActUp, ActDown, ActOpen, ActExpand, ActCollapse, ActTop, ActBottom, ActPageUp, ActPageDown, ActFilter, ActRefresh}},
 	{"Connections", []Action{ActConnect, ActDisconnect, ActNewConn, ActEditConn, ActDeleteConn, ActRevealSecret}},
+	{"SQL", []Action{ActRunQuery, ActHistory}},
 	{"Workspace", []Action{ActSwapPane, ActTabNext, ActTabPrev, ActPanel, ActPaneNarrow, ActPaneWiden}},
 	{"App", []Action{ActHints, ActHelp, ActMenu, ActQuit}},
 }
@@ -147,6 +154,9 @@ var actionHelp = map[Action]string{
 	ActEditConn:     "edit connection…",
 	ActDeleteConn:   "delete connection…",
 	ActRevealSecret: "reveal saved password (10s)",
+
+	ActRunQuery: "run the SQL buffer (also ctrl+r / :w in the tab)",
+	ActHistory:  "query history…",
 
 	ActSwapPane:   "focus workspace / tree",
 	ActTabNext:    "next workspace tab",

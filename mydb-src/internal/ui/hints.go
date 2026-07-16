@@ -39,6 +39,32 @@ func (m *Model) hintRows() [][]hint {
 			{key: "esc", label: "clear"},
 		}}
 	case m.focusRight:
+		if m.tab == tabSQL {
+			s := m.currentSQLSession(false)
+			if s != nil && s.editorFocused {
+				return [][]hint{{
+					{key: "i", label: "insert"},
+					{key: "esc", label: "normal"},
+					{key: "^r/:w", label: "run"},
+					{key: "tab", label: "results"},
+					{key: ":q", label: "tree"},
+				}}
+			}
+			return [][]hint{
+				{
+					{key: "↑↓←→", label: "cell"},
+					{key: "enter", label: "value"},
+					{key: "e/E", label: "explain"},
+					{key: "esc", label: "cancel/editor"},
+				},
+				{
+					{key: "i", label: "editor"},
+					{key: "y/Y", label: "copy"},
+					{key: "[/]", label: "tabs"},
+					{key: "tab", label: "tree"},
+				},
+			}
+		}
 		if m.tab == tabData {
 			return [][]hint{
 				{
