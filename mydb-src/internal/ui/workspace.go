@@ -20,7 +20,23 @@ const (
 
 var tabNames = [tabCount]string{"Info", "Data", "SQL", "Jobs"}
 
-// swapFocus toggles which side receives keys.
+// enterTab prepares a tab when focus lands on it (load the grid, ensure
+// the SQL session exists).
+func (m *Model) enterTab(tab int) tea.Cmd {
+	switch tab {
+	case tabData:
+		return m.maybeLoadGrid()
+	case tabSQL:
+		if s := m.currentSQLSession(true); s != nil {
+			s.editorFocused = true
+		}
+	}
+	return nil
+}
+
+// swapFocus toggles focus between the tree and the workspace, preserving
+// the current tab. Bound to ctrl+w / ctrl+o — the quick jump that also
+// works from the SQL editor's insert mode (where Tab types indentation).
 func (m *Model) swapFocus() tea.Cmd {
 	if !m.panelOn {
 		m.panelOn = true
@@ -29,16 +45,44 @@ func (m *Model) swapFocus() tea.Cmd {
 	if !m.focusRight {
 		return nil
 	}
-	switch m.tab {
-	case tabData:
-		return m.maybeLoadGrid()
-	case tabSQL:
-		m.currentSQLSession(true)
-	}
-	return nil
+	return m.enterTab(m.tab)
 }
 
-// switchTab activates a workspace tab (with wraparound).
+// walkFocus moves focus forward one step, so Tab walks through everything
+// left-to-right: tree → Info → Data → SQL(editor → results) → Jobs → tree,
+// then wraps. This makes the universally-delivered Tab key reach every
+// tab (some terminals eat ctrl+w), matching the visible tab strip.
+func (m *Model) walkFocus() tea.Cmd {
+	if !m.panelOn {
+		m.panelOn = true
+	}
+	if !m.focusRight {
+		m.focusRight = true
+		return m.enterTab(m.tab)
+	}
+	// Inside the SQL tab, Tab steps editor → results, then (on the next
+	// Tab) leaves the tab — resetting the sub-focus for the next visit.
+	if m.tab == tabSQL {
+		if s := m.currentSQLSession(false); s != nil {
+			if s.editorFocused {
+				s.editorFocused = false // editor → results, stay on SQL
+				return nil
+			}
+			s.editorFocused = true // leaving SQL: next visit starts in the editor
+		}
+	}
+	if m.tab >= tabCount-1 {
+		// Past the last tab: back to the tree, and reset to the first tab
+		// so the next Tab restarts the walk from the top.
+		m.focusRight = false
+		m.tab = tabInfo
+		return nil
+	}
+	m.tab++
+	return m.enterTab(m.tab)
+}
+
+// switchTab activates a workspace tab directly (bound to [ / ]).
 func (m *Model) switchTab(delta int) tea.Cmd {
 	m.tab = (m.tab + delta + tabCount) % tabCount
 	switch m.tab {
@@ -59,7 +103,9 @@ func (m *Model) workspaceKey(msg tea.KeyMsg) tea.Cmd {
 	}
 	key := msg.String()
 	switch key {
-	case "tab", "ctrl+w", "ctrl+o", "esc":
+	case "tab":
+		return m.walkFocus()
+	case "ctrl+w", "ctrl+o", "esc":
 		m.focusRight = false
 		return nil
 	case "[":

@@ -51,14 +51,14 @@ They are separate binaries with separate config (`~/.config/myterm/`, `~/.config
 
 ## Installation
 
-Requires **Go 1.22+** and the **Xcode Command Line Tools** (the iCloud bridge uses cgo → Foundation). Both apps live in this repo, so clone it once:
+Requires **Go 1.22+**. The two file browsers additionally need the **Xcode Command Line Tools** (the iCloud bridge uses cgo → Foundation); **mydb** is pure Go with no cgo. All three apps live in this repo, so clone it once:
 
 ```sh
 git clone git@github.com:offsideAI/mytermtui.git
 cd mytermtui
 ```
 
-Then install either app on its own — or both.
+Then install any app on its own — or all three.
 
 ### myterm
 
@@ -74,7 +74,16 @@ go -C myconsole-src build -o myconsole .
 install myconsole-src/myconsole /opt/homebrew/bin/   # or sudo … /usr/local/bin/
 ```
 
-> **Full Disk Access required for iCloud browsing.** `~/Library/Mobile Documents` is protected; grant your terminal app Full Disk Access in *System Settings → Privacy & Security*. Without it the status bar shows a permission hint when you enter iCloud paths.
+### mydb
+
+A third sibling — a database admin TUI (SQLite + PostgreSQL) rather than a file browser. Pure Go, no cgo, no Full Disk Access; see [README-mydb.md](README-mydb.md).
+
+```sh
+go -C mydb-src build -o mydb .
+install mydb-src/mydb /opt/homebrew/bin/   # or sudo … /usr/local/bin/
+```
+
+> **Full Disk Access required for iCloud browsing.** `~/Library/Mobile Documents` is protected; grant your terminal app Full Disk Access in *System Settings → Privacy & Security*. Without it the status bar shows a permission hint when you enter iCloud paths. (Applies to myterm/myconsole only — mydb never touches iCloud.)
 
 Non-macOS builds compile and run as plain file browsers — iCloud actions report "requires macOS".
 

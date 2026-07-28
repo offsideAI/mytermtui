@@ -46,20 +46,46 @@ func TestWorkspaceFocusAndTabs(t *testing.T) {
 	if m.tab != tabData {
 		t.Fatalf("[ should step back to Data, tab=%d", m.tab)
 	}
-	press(t, m, "[")
-	press(t, m, "tab")
-	if m.focusRight {
-		t.Fatal("tab should return focus to the tree")
-	}
 
-	// ctrl+w swaps focus both ways, like tab.
-	press(t, m, "ctrl+w")
-	if !m.focusRight {
-		t.Fatal("ctrl+w should focus the workspace")
-	}
+	// ctrl+w jumps focus tree ↔ workspace, preserving the tab.
 	press(t, m, "ctrl+w")
 	if m.focusRight {
 		t.Fatal("ctrl+w should return focus to the tree")
+	}
+	press(t, m, "ctrl+w")
+	if !m.focusRight || m.tab != tabData {
+		t.Fatalf("ctrl+w should re-focus the workspace on the same tab (tab=%d)", m.tab)
+	}
+}
+
+// Tab walks focus forward through the whole UI so the SQL tab is
+// reachable with the one key every terminal delivers.
+func TestTabWalksToSQLAndAround(t *testing.T) {
+	m, _ := fixture(t)
+	press(t, m, "down", "enter") // connect (so the SQL session is real)
+
+	steps := []struct {
+		wantRight bool
+		wantTab   int
+	}{
+		{true, tabInfo},  // tab: tree → Info
+		{true, tabData},  // tab: Info → Data
+		{true, tabSQL},   // tab: Data → SQL (editor)
+		{true, tabSQL},   // tab: SQL editor → SQL results
+		{true, tabJobs},  // tab: SQL results → Jobs
+		{false, tabInfo}, // tab: Jobs → tree (resets to Info)
+	}
+	for i, st := range steps {
+		press(t, m, "tab")
+		if m.focusRight != st.wantRight || m.tab != st.wantTab {
+			t.Fatalf("step %d: focusRight=%v tab=%d, want %v/%d",
+				i, m.focusRight, m.tab, st.wantRight, st.wantTab)
+		}
+	}
+	// The SQL session came back to editor focus for the next visit.
+	press(t, m, "tab", "tab", "tab") // Info → Data → SQL
+	if s := m.currentSQLSession(false); s == nil || !s.editorFocused {
+		t.Fatal("returning to SQL should start on the editor")
 	}
 }
 
@@ -143,14 +169,14 @@ func TestGridRebindsOnNewTable(t *testing.T) {
 	press(t, m, "tab", "]") // grid on users
 	first := m.grid.path
 
-	press(t, m, "tab")           // back to tree
+	press(t, m, "ctrl+w")        // jump back to the tree
 	press(t, m, "left", "left")  // collapse users? no — jump Tables, collapse
 	press(t, m, "down", "enter") // Views group expand
 	press(t, m, "down")          // user_emails view
 	if n := m.currentNode(); n == nil || n.Name != "user_emails" {
 		t.Fatalf("cursor should be on user_emails, is on %v", m.currentNode())
 	}
-	press(t, m, "tab") // workspace still on Data tab → rebind
+	press(t, m, "ctrl+w") // re-focus workspace (Data tab) → rebind
 	if m.grid.path == first {
 		t.Fatal("grid should rebind to the newly selected view")
 	}
@@ -166,7 +192,7 @@ func TestDisconnectClearsGrid(t *testing.T) {
 	if m.grid.res == nil {
 		t.Fatal("precondition: grid loaded")
 	}
-	press(t, m, "tab") // back to tree (cursor still inside the connection)
+	press(t, m, "ctrl+w") // jump back to the tree (cursor still inside the connection)
 	press(t, m, "d")
 	if m.grid.res != nil || m.grid.path != "" {
 		t.Fatalf("disconnect should clear the grid: %+v", m.grid)

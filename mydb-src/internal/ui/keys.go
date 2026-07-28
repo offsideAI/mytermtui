@@ -33,6 +33,7 @@ const (
 	ActRestore     Action = "restore"
 	ActJobs        Action = "jobs"
 
+	ActWalkPane   Action = "walk_pane"
 	ActSwapPane   Action = "swap_pane"
 	ActTabNext    Action = "tab_next"
 	ActTabPrev    Action = "tab_prev"
@@ -63,7 +64,7 @@ var defaultBindings = map[Action][]string{
 	ActConnect:      {"c"},
 	ActDisconnect:   {"d"},
 	ActNewConn:      {"B"},
-	ActEditConn:     {"E"},
+	ActEditConn:     {"e", "E"},
 	ActDeleteConn:   {"X"},
 	ActRevealSecret: {"p"},
 
@@ -76,7 +77,8 @@ var defaultBindings = map[Action][]string{
 	ActRestore:     {"r"},
 	ActJobs:        {"Q"},
 
-	ActSwapPane:   {"tab", "ctrl+w", "ctrl+o"},
+	ActWalkPane:   {"tab"},
+	ActSwapPane:   {"ctrl+w", "ctrl+o"},
 	ActTabNext:    {"]"},
 	ActTabPrev:    {"["},
 	ActPanel:      {"f3", "P"},
@@ -144,7 +146,7 @@ var helpSections = []helpSection{
 	{"Connections", []Action{ActConnect, ActDisconnect, ActNewConn, ActEditConn, ActDeleteConn, ActRevealSecret}},
 	{"SQL", []Action{ActRunQuery, ActHistory}},
 	{"Admin", []Action{ActCommands, ActMaintenance, ActBackup, ActRestore, ActJobs}},
-	{"Workspace", []Action{ActSwapPane, ActTabNext, ActTabPrev, ActPanel, ActPaneNarrow, ActPaneWiden}},
+	{"Workspace", []Action{ActWalkPane, ActSwapPane, ActTabNext, ActTabPrev, ActPanel, ActPaneNarrow, ActPaneWiden}},
 	{"App", []Action{ActHints, ActHelp, ActMenu, ActQuit}},
 }
 
@@ -177,7 +179,8 @@ var actionHelp = map[Action]string{
 	ActRestore:     "restore into the connection…",
 	ActJobs:        "jobs tab",
 
-	ActSwapPane:   "focus workspace / tree",
+	ActWalkPane:   "walk focus: tree → tabs → tree",
+	ActSwapPane:   "jump focus tree ↔ workspace (works in the editor)",
 	ActTabNext:    "next workspace tab",
 	ActTabPrev:    "previous workspace tab",
 	ActPanel:      "toggle workspace panel",

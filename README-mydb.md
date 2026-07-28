@@ -30,8 +30,8 @@ mydb --version
 
 1. Press **`B`** to add a connection. Paste a whole connection string into the URL field (`postgres://user:pass@host:5432/db`, a `key=value` DSN, or a SQLite path) and `enter` to fill the fields, or type them directly. Choose the **Local/Remote** section and read-write vs read-only **Access**.
 2. Put the cursor on the connection and press **`c`** (or `enter`) to connect. The status bar shows a green `●` with the name; a red `●` means nothing is connected. Only one connection is open at a time — connecting a new one releases the previous.
-3. Expand the tree to schemas → Tables → a table. Press **`tab`** (or `ctrl+w`/`ctrl+o`) to focus the right workspace, then `]` to reach the **Data** tab and page through rows.
-4. `]` again for the **SQL** tab: write a query in the vim editor, `ctrl+r` to run it. `ctrl+h` for history.
+3. Expand the tree to schemas → Tables → a table. Press **`tab`** to walk focus into the workspace and along its tabs (or `ctrl+w`/`ctrl+o` to jump straight in), reaching **Data** and page through rows.
+4. `tab` again for the **SQL** tab: write a query in the vim editor, `ctrl+r` to run it. `ctrl+h` for history.
 5. **`b`** backs up the selected connection; watch it in the **Jobs** tab (`Q`). `?` for the full key reference.
 
 ## The layout
@@ -85,8 +85,8 @@ Press `?` for the live version (it reflects your remaps).
 | Group | Keys |
 |---|---|
 | **Move** | `↑↓`/`kj` cursor · `enter`/`→` expand (connects first) · `←`/`h` collapse / parent · `g`/`G` top/bottom · `pgup`/`pgdn` page |
-| **Connections** | `c` connect (disconnects the previous) · `d` disconnect · `B` new · `E` edit · `X` delete · `p` reveal password (10s) |
-| **Panels** | `tab`/`ctrl+w`/`ctrl+o` tree ↔ workspace · `[` `]` tabs · `<`/`>` resize · `F3`/`P` toggle panel |
+| **Connections** | `c` connect (disconnects the previous) · `d` disconnect · `B` new · `e`/`E` edit · `X` delete · `p` reveal password (10s) |
+| **Panels** | `tab` walk focus (tree → tabs → tree) · `ctrl+w`/`ctrl+o` jump tree ↔ workspace · `[` `]` jump tabs · `<`/`>` resize · `F3`/`P` toggle panel |
 | **SQL** | `ctrl+r`/`:w`/`f5` run · `esc` cancel (results) · `e`/`E` explain · `ctrl+h` history |
 | **Admin** | `C` commands · `M` maintenance · `b` backup · `r` restore · `Q` jobs · `I` info |
 | **Data grid** | `J`/`K` page · `h`/`l` columns · `enter` full cell · `y`/`Y` copy cell/row |

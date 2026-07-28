@@ -77,7 +77,7 @@ myconsole's chrome, re-domained: tree on the left, a **tabbed workspace** on the
 
 - **Menu bar** (`m`/`F10`): File, Edit, View, Go, **Database** (connect, disconnect, backup, restore, maintenance, roles), **Commands** (the template catalog, §3.5), Help. Every item shows its live shortcut.
 - **Breadcrumb** — the selected node's path (`connection ▸ database ▸ schema ▸ object`) plus engine and connection-status glyph.
-- **Tree** (left) and **workspace** (right) — split by `split_ratio` (default **0.50**), resized with `<`/`>`, toggled with `F3`/`P`; `tab`, `ctrl+w`, or `ctrl+o` moves focus between them, each side keeping its cursor. The tree's Details column sizes to its visible content, so a connection row's full `engine · host:port/db` target renders untruncated (no wrapping) whenever the pane can fit it.
+- **Tree** (left) and **workspace** (right) — split by `split_ratio` (default **0.50**), resized with `<`/`>`, toggled with `F3`/`P`; `tab` walks focus forward through the tree and every workspace tab (Info → Data → SQL → Jobs → tree); `ctrl+w`/`ctrl+o` jump straight between the tree and the workspace (and work in the SQL editor's insert mode, where Tab types indentation), each side keeping its cursor. The tree's Details column sizes to its visible content, so a connection row's full `engine · host:port/db` target renders untruncated (no wrapping) whenever the pane can fit it.
 - **Job bar** — appears only while the job queue is active (mirrors the download bar).
 - **Hint bar** (`H` toggles) and **status bar** — as in myconsole; the status bar's right side always carries the connection indicator (green `●` + name / red `●` disconnected) beside running-query count and the selected scope's object counts.
 
@@ -145,7 +145,7 @@ Focusable (`tab`), tabbed (`[`/`]` switch tabs), context follows the selected tr
 - `B` (or *File → New Connection*) opens a **form modal**: an optional **URL field**, then name, engine, **locality (Local/Remote — the user chooses; mydb never guesses)**, then per-engine fields — SQLite: path (with tab completion); Postgres: host, port, database, user, password (masked); plus an **Access** choice (read-write / read-only) for both engines. Saving writes to the registry and the connection appears in its section.
 - **Connection-string field** — paste a whole connection string into the URL field and press `enter`: `postgres://user:pass@host:5432/db`, a `key=value` DSN (`host=… port=… dbname=…`), a plain SQLite path, or a `sqlite://`/`file:` URL. mydb parses it into the individual fields (setting the engine) which stay visible and editable before saving; a malformed string errors inline without touching the fields. The parse also runs on save when the URL field is non-empty. The URL itself is not stored — the parts are.
 - **Password reveal** — passwords are masked by default everywhere. In the form, `ctrl+r` on the focused password field toggles it to plain text (for typing or verifying) and back; the form always opens masked. On a connection node, `p` reveals the saved password in the Info panel with a status-bar warning; it re-masks automatically after 10 seconds, on a second `p`, or when the connection is deleted. Nothing else ever displays a stored password.
-- `E` edits, `X` deletes (typed confirmation — deleting a saved connection also drops its history rows), on connection nodes.
+- `e` (or `E`) edits, `X` deletes (typed confirmation — deleting a saved connection also drops its history rows), on connection nodes.
 - The registry itself is a first-class citizen: *Database → Open Registry* opens mydb's own registry database as a SQLite connection for power users.
 
 ### 3.5 Common-commands menu
@@ -188,9 +188,9 @@ Same dual philosophy as the siblings (arrow keys + vim letters, everything rebin
 | Group | Keys |
 |---|---|
 | **Move** | `↑↓`/`kj` cursor · `enter`/`→` expand (connects if needed), `←` collapse / parent row · `g`/`G` top/bottom · `pgup`/`pgdn` page · `bksp` parent |
-| **Panels** | `tab`/`ctrl+w`/`ctrl+o` tree ↔ workspace (the ctrl combos work in the editor's insert mode too; `ctrl+o` is the fallback where a terminal/tmux eats `ctrl+w`) · `[` `]` workspace tabs · `<`/`>` resize · `F3`/`P` toggle panel |
+| **Panels** | `tab` walk focus (tree → Info → Data → SQL → Jobs → tree) · `ctrl+w`/`ctrl+o` jump tree ↔ workspace (also in editor insert mode) · `[` `]` jump tabs directly · `<`/`>` resize · `F3`/`P` toggle panel |
 | **Find** | `f` filter · `F` fuzzy find · `s` sort · `:` go to node path · `ctrl+r` refresh node |
-| **Connections** | `B` new · `E` edit · `X` delete · `c` connect (disconnects the previous) · `d` disconnect · `p` reveal password (10s) · `ctrl+r` reveal in form |
+| **Connections** | `B` new · `e`/`E` edit · `X` delete · `c` connect (disconnects the previous) · `d` disconnect · `p` reveal password (10s) · `ctrl+r` reveal in form |
 | **SQL tab** | `ctrl+r`/`:w` run · `esc` cancel running · `e` explain · `ctrl+h` history · vim keys per the editor |
 | **Data tab** | `J`/`K` next/prev page · `h`/`l` column scroll · `enter` full cell value · `y` copy cell · `Y` copy row |
 | **Admin** | `C` commands · `M` maintenance · `b` backup · `r` restore · `Q` jobs · `I` info |
@@ -402,7 +402,7 @@ Build: `go -C mydb-src build -o mydb .` — `CGO_ENABLED=0` everywhere; unlike t
 
 - **Huge tables** — grids only ever fetch one stable-ordered page; `COUNT(*)` is skipped in favor of estimates (`reltuples`, or a capped count) so selecting a billion-row table never hangs; result sets cap at `max_rows` with a visible `truncated` marker.
 - **Connection loss mid-session** — a failed command marks the connection `✗` with the error, collapses live state, and offers reconnect; the tree keeps cached children (dimmed) so context isn't lost.
-- **Wrong/changed password** — the connect error surfaces on the node and status bar; `E` reopens the form with the saved values.
+- **Wrong/changed password** — the connect error surfaces on the node and status bar; `e` reopens the form with the saved values.
 - **Locked SQLite files** (another writer, stale WAL) — busy-timeout applied; persistent lock errors reported, never spun on.
 - **Weird cells** — NULL (`␀`), bytea (`0x…` preview), multi-line and control characters sanitized for the grid, full value via `enter` popup; invalid UTF-8 replaced, never crashing the renderer.
 - **`pg_dump` version skew** — the probe records the tool version; a server-newer-than-tool mismatch warns before the job starts.

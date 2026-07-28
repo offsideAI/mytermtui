@@ -178,7 +178,9 @@ func (m *Model) sqlTabKey(msg tea.KeyMsg) tea.Cmd {
 	s := m.currentSQLSession(true)
 	if s == nil {
 		switch key {
-		case "tab", "ctrl+w", "ctrl+o", "esc":
+		case "tab":
+			return m.walkFocus() // advance to Jobs / wrap to the tree
+		case "ctrl+w", "ctrl+o", "esc":
 			m.focusRight = false
 		case "[":
 			return m.switchTab(-1)
@@ -202,9 +204,11 @@ func (m *Model) sqlTabKey(msg tea.KeyMsg) tea.Cmd {
 	}
 
 	if s.editorFocused {
+		// In normal mode, Tab walks forward: editor → results (via
+		// walkFocus, which steps the editor→results sub-focus). In insert
+		// mode, Tab falls through to the editor and types indentation.
 		if key == "tab" && s.editor.mode == edNormal {
-			s.editorFocused = false
-			return nil
+			return m.walkFocus()
 		}
 		cmd := s.editor.Update(m, msg)
 		if s.editor.quit {
@@ -223,7 +227,11 @@ func (m *Model) sqlTabKey(msg tea.KeyMsg) tea.Cmd {
 		}
 		s.editorFocused = true
 		return nil
-	case "tab", "ctrl+w", "ctrl+o":
+	case "tab":
+		// From the results pane, Tab advances to the next tab (walkFocus
+		// resets the sub-focus so the next SQL visit starts in the editor).
+		return m.walkFocus()
+	case "ctrl+w", "ctrl+o":
 		m.focusRight = false
 		s.editorFocused = true // next visit starts in the editor
 		return nil

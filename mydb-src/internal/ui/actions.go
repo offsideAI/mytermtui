@@ -96,6 +96,8 @@ func (m *Model) dispatch(act Action) tea.Cmd {
 		m.tab = tabJobs
 		return nil
 
+	case ActWalkPane:
+		return m.walkFocus()
 	case ActSwapPane:
 		return m.swapFocus()
 	case ActTabNext:

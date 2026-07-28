@@ -103,14 +103,15 @@ func (m *Model) hintRows() [][]hint {
 			{key: "enter", label: "expand"},
 			{act: ActConnect, label: "connect"},
 			{act: ActDisconnect, label: "disconnect"},
-			{act: ActFilter, label: "filter"},
+			{act: ActEditConn, label: "edit"},
 		},
 		{
+			{act: ActFilter, label: "filter"},
 			{act: ActBackup, label: "backup"},
 			{act: ActCommands, label: "commands"},
 			{act: ActMaintenance, label: "maint"},
 			{act: ActJobs, label: "jobs"},
-			{act: ActSwapPane, label: "panel"},
+			{act: ActWalkPane, label: "panel"},
 			{act: ActQuit, label: "quit"},
 		},
 	}

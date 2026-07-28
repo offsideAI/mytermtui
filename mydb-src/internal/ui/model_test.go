@@ -260,6 +260,30 @@ func TestConnFormCreatesConnection(t *testing.T) {
 	}
 }
 
+func TestEditKeyOpensPrefilledConnForm(t *testing.T) {
+	m, _ := fixture(t)
+	press(t, m, "down") // onto the connection
+	press(t, m, "e")
+	f, ok := m.modal.(*connForm)
+	if !ok {
+		t.Fatal("e should open the connection form")
+	}
+	if f.editID == 0 {
+		t.Fatal("form should be in edit mode, not create")
+	}
+	if got := f.fields["name"].Value(); got != "app" {
+		t.Fatalf("name not prefilled: %q", got)
+	}
+	press(t, m, "ctrl+s") // save unchanged
+	if m.modal != nil {
+		t.Fatalf("form should close on save (modal=%#v)", m.modal)
+	}
+	conns, err := m.reg.Connections()
+	if err != nil || len(conns) != 1 || conns[0].Name != "app" {
+		t.Fatalf("connection not persisted intact: %v %v", conns, err)
+	}
+}
+
 func TestDeleteConnRequiresTypedName(t *testing.T) {
 	m, _ := fixture(t)
 	press(t, m, "down") // onto the connection
