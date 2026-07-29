@@ -1,0 +1,5 @@
+TODO
+----
+- wire up the client retry loop
+- document the /widgets endpoint
+- add a healthcheck

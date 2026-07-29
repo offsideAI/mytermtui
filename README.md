@@ -7,6 +7,18 @@
 
 Both show which files are **evicted** (cloud-only ☁), **download** marked files/folders with a live progress queue, **evict** local copies to reclaim disk, and offer Finder-parity file management — the things Finder does with a right-click, minus the mouse.
 
+## Demos
+
+**myterm** — browsing, expanding the tree in place, the detail panel following the cursor, **dual independent panels** (`→` opens a folder in its own panel), filtering, menus, sort, Get Info, and the keyboard-reference overlay:
+
+![myterm demo: tree browsing, dual independent panels, filtering, and Get Info](_demo/myterm-demo.gif)
+
+**myconsole** — the same in-place tree and detail panel, live filtering, menus, sort, help, and the **embedded vim-style editor**:
+
+![myconsole demo: browsing, filtering, menus, and the embedded editor](_demo/myconsole-demo.gif)
+
+*(Both generated headlessly from the real UI — see [_demo/README.md](_demo/README.md) to regenerate. mydb, the database admin sibling, has its own demo in [README-mydb.md](README-mydb.md).)*
+
 ![myterm: tree expanded in place, detail panel showing the selected folder](screenshots/01-browser.png)
 
 *myterm above; myconsole below — same folder, navigator style:*
@@ -63,15 +75,19 @@ Then install any app on its own — or all three.
 ### myterm
 
 ```sh
-go -C myterm-src build -o myterm .
-install myterm-src/myterm /opt/homebrew/bin/   # or sudo … /usr/local/bin/
+cd myterm-src
+go build -o myterm .
+install myterm /opt/homebrew/bin/   # or sudo … /usr/local/bin/
+cd ..
 ```
 
 ### myconsole
 
 ```sh
-go -C myconsole-src build -o myconsole .
-install myconsole-src/myconsole /opt/homebrew/bin/   # or sudo … /usr/local/bin/
+cd myconsole-src
+go build -o myconsole .
+install myconsole /opt/homebrew/bin/   # or sudo … /usr/local/bin/
+cd ..
 ```
 
 ### mydb
@@ -79,8 +95,10 @@ install myconsole-src/myconsole /opt/homebrew/bin/   # or sudo … /usr/local/bi
 A third sibling — a database admin TUI (SQLite + PostgreSQL) rather than a file browser. Pure Go, no cgo, no Full Disk Access; see [README-mydb.md](README-mydb.md).
 
 ```sh
-go -C mydb-src build -o mydb .
-install mydb-src/mydb /opt/homebrew/bin/   # or sudo … /usr/local/bin/
+cd mydb-src
+go build -o mydb .
+install mydb /opt/homebrew/bin/   # or sudo … /usr/local/bin/
+cd ..
 ```
 
 > **Full Disk Access required for iCloud browsing.** `~/Library/Mobile Documents` is protected; grant your terminal app Full Disk Access in *System Settings → Privacy & Security*. Without it the status bar shows a permission hint when you enter iCloud paths. (Applies to myterm/myconsole only — mydb never touches iCloud.)

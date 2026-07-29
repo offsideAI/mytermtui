@@ -6,6 +6,14 @@ mydb shows a database's schema and data as a navigable tree, runs SQL from an em
 
 - **Design spec:** [SPEC-mydb.md](SPEC-mydb.md) · **Roadmap:** [ROADMAP-mydb.md](ROADMAP-mydb.md) · **Build/install:** [DEPLOY.md](DEPLOY.md)
 
+## Demo
+
+A scripted tour — connecting a SQLite database and browsing its schema down to columns, the read-only paged data grid, running SQL in the vim editor, switching to PostgreSQL (one active connection at a time, with the discovered-database Annex and cluster Roles), the common-commands templates, maintenance, and a backup:
+
+![mydb demo: browse, data grid, SQL, PostgreSQL, admin commands, backup](_demo/mydb-demo.gif)
+
+*(Generated headlessly from the real UI — see [_demo/README.md](_demo/README.md) to regenerate.)*
+
 ---
 
 ## Install

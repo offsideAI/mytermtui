@@ -165,11 +165,19 @@ def render(path, out_path, fonts):
         cx = ox + 22 + i * 22
         draw.ellipse([cx - 7, oy + TITLEBAR // 2 - 7, cx + 7, oy + TITLEBAR // 2 + 7],
                      fill=color)
-    title = os.path.splitext(os.path.basename(out_path))[0].split("-", 1)[-1]
+    # ANSI2PNG_TITLE overrides the per-frame title with a constant string
+    # (used by the demo film so the title bar doesn't flicker frame to
+    # frame). Unset for the normal per-scene screenshots.
+    fixed = os.environ.get("ANSI2PNG_TITLE")
+    if fixed:
+        caption = fixed
+    else:
+        title = os.path.splitext(os.path.basename(out_path))[0].split("-", 1)[-1]
+        caption = APP + " — " + title
     tf = fonts.regular
-    draw.text((ox + img_w / 2 - tf.getlength(APP + " — " + title) / 2,
+    draw.text((ox + img_w / 2 - tf.getlength(caption) / 2,
                oy + TITLEBAR // 2 - fonts.cell_h // 2),
-              APP + " — " + title, font=tf, fill=(147, 153, 178))
+              caption, font=tf, fill=(147, 153, 178))
 
     x0, y0 = ox + PAD, oy + TITLEBAR + PAD
 
