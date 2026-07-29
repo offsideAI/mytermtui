@@ -17,13 +17,10 @@ Both show which files are **evicted** (cloud-only ☁), **download** marked file
 
 ![myconsole demo: browsing, filtering, menus, and the embedded editor](_demo/myconsole-demo.gif)
 
-*(Both generated headlessly from the real UI — see [_demo/README.md](_demo/README.md) to regenerate. mydb, the database admin sibling, has its own demo in [README-mydb.md](README-mydb.md).)*
+**mydb** — the database admin sibling: connecting a SQLite database and browsing its schema, the read-only data grid, running SQL, switching to PostgreSQL (one active connection, the discovered-database Annex, cluster Roles), the common-commands templates, maintenance, and a backup (details in [README-mydb.md](README-mydb.md)):
 
-![myterm: tree expanded in place, detail panel showing the selected folder](screenshots/01-browser.png)
+![mydb demo: browse, data grid, SQL, PostgreSQL, admin commands, backup](_demo/mydb-demo.gif)
 
-*myterm above; myconsole below — same folder, navigator style:*
-
-![myconsole: classic single-listing navigator](screenshots/myconsole/01-browser.png)
 
 ---
 
